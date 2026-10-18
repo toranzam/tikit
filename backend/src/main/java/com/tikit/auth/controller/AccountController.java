@@ -1,13 +1,10 @@
 package com.tikit.auth.controller;
 
+import com.tikit.auth.dto.JwtTokenDTO;
 import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
-import com.tikit.auth.dto.response.AccountLoginResponseDTO;
-import com.tikit.auth.entity.Account;
-import com.tikit.auth.redis.RefreshTokenRepository;
 import com.tikit.auth.service.AccountService;
 import com.tikit.common.dto.ResponseDTO;
-import com.tikit.util.JWTProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,29 +19,38 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountService accountService;
-    private final JWTProvider jwtProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
+
+
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<AccountLoginResponseDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
-        Account account = accountService.login(dto);
-
-        String accessToken = jwtProvider.generateToken(account, 10);
-        String refreshToken = jwtProvider.generateToken(account, 60);
-
-        refreshTokenRepository.save(account.getAccountId().toString(), refreshToken);
+    public ResponseEntity<ResponseDTO<JwtTokenDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
+        JwtTokenDTO tokenDTO = accountService.login(dto);
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(new ResponseDTO<>(1, "로그인 성공", new AccountLoginResponseDTO(accessToken, refreshToken)));
+                .status(HttpStatus.OK)
+                .body(new ResponseDTO<>(1, "로그인 성공", tokenDTO));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ResponseDTO<Void>> register(@RequestBody AccountRegisterRequestDTO dto) {
-        String s = accountService.registerUser(dto);
+        accountService.registerUser(dto);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new ResponseDTO<>(1, "회원가입이 성공하였습니다.", null));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ResponseDTO<JwtTokenDTO>> refresh(@RequestBody JwtTokenDTO jwtTokenDTO) {
+
+        JwtTokenDTO newJwtToken = accountService.refresh(jwtTokenDTO.getRefreshToken());
+
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(new ResponseDTO<>(1, "회원가입이 성공하였습니다.", null));
+                .body(new ResponseDTO<>(
+                        1,
+                        "토큰 재발급 성공",
+                        newJwtToken
+                ));
     }
 
 
