@@ -11,6 +11,7 @@ import com.tikit.auth.redis.RefreshTokenRepository;
 import com.tikit.auth.repository.AccountRepository;
 import com.tikit.util.JWTProvider;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,17 +74,15 @@ public class AccountService {
     @Transactional(readOnly = true)
     public JwtTokenDTO refresh(String refreshToken) {
 
-        // 만료 여부 확인
-        if (jwtProvider.isExpired(refreshToken)) {
-            throw new RefreshTokenException("Refresh Token이 만료되었습니다.");
-        }
 
         Claims claims;
-        // refreshToken 에서 정보 추출
+        // refreshToken 에서 정보 추출 및 토큰 만료 확인
         try {
             claims = jwtProvider.getClaims(refreshToken);
+        } catch (ExpiredJwtException e) {
+            throw new RefreshTokenException("Refresh Token이 만료되었습니다.");
         } catch (JwtException | IllegalArgumentException e) {
-            throw new RefreshTokenException("유효하지 않거나 만료된 Refresh Token입니다.");
+            throw new RefreshTokenException("유효하지 않은 Refresh Token입니다.");
         }
 
         String accountId = claims.getSubject();
