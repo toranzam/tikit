@@ -4,6 +4,7 @@ import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
 import com.tikit.auth.dto.response.AccountLoginResponseDTO;
 import com.tikit.auth.entity.Account;
+import com.tikit.auth.redis.RefreshTokenRepository;
 import com.tikit.auth.service.AccountService;
 import com.tikit.common.dto.ResponseDTO;
 import com.tikit.util.JWTProvider;
@@ -22,6 +23,7 @@ public class AccountController {
 
     private final AccountService accountService;
     private final JWTProvider jwtProvider;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @PostMapping("/login")
     public ResponseEntity<ResponseDTO<AccountLoginResponseDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
@@ -29,6 +31,8 @@ public class AccountController {
 
         String accessToken = jwtProvider.generateToken(account, 10);
         String refreshToken = jwtProvider.generateToken(account, 60);
+
+        refreshTokenRepository.save(account.getAccountId().toString(), refreshToken);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
