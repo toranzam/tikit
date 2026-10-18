@@ -4,6 +4,7 @@ import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
 import com.tikit.auth.entity.Account;
 import com.tikit.auth.entity.Role;
+import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class AccountService {
 
     @Transactional
     public String registerUser(AccountRegisterRequestDTO dto) {
+
         String encodedPw = passwordEncoder.encode(dto.getRawPassword());
 
         Account account = Account.create(
@@ -42,10 +44,10 @@ public class AccountService {
 
         Account account = accountRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("User not fount: " + dto.getEmail()));
+                        new LoginException("Account Not Found"));
 
         if(!passwordEncoder.matches(dto.getRawPassword(), account.getPassword())) {
-            throw new IllegalArgumentException("Invalid Password");
+            throw new LoginException("Invalid Password");
         }
 
         log.info("login success: {}", account.getAccountId());
