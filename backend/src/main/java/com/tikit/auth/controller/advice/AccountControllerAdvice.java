@@ -18,7 +18,7 @@ public class AccountControllerAdvice {
         log.error("login failed: {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
-                .body(new ResponseDTO<>(-1, "login failed check your credentials", null));
+                .body(new ResponseDTO<>(-1, "이메일 또는 비밀번호가 올바르지 않습니다.", null));
     }
 
     @ExceptionHandler(RefreshTokenException.class)
