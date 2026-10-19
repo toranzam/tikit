@@ -11,15 +11,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/v1/auth")
 @Slf4j
 @RequiredArgsConstructor
 public class AccountController {
 
     private final AccountService accountService;
-
 
 
     @PostMapping("/login")
@@ -31,9 +32,9 @@ public class AccountController {
                 .body(new ResponseDTO<>(1, "로그인 성공", tokenDTO));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<ResponseDTO<Void>> register(@RequestBody AccountRegisterRequestDTO dto) {
-        accountService.registerUser(dto);
+    @PostMapping("/signup")
+    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody AccountRegisterRequestDTO dto) {
+        accountService.signupUser(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new ResponseDTO<>(1, "회원가입이 성공하였습니다.", null));

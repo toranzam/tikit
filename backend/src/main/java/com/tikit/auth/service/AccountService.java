@@ -9,17 +9,20 @@ import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.exception.RefreshTokenException;
 import com.tikit.auth.redis.RefreshTokenRepository;
 import com.tikit.auth.repository.AccountRepository;
+import com.tikit.config.security.CustomUserDetails;
 import com.tikit.util.JWTProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -30,9 +33,10 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JWTProvider jwtProvider;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public String registerUser(AccountRegisterRequestDTO dto) {
+    public void signupUser(AccountRegisterRequestDTO dto) {
 
         String encodedPw = passwordEncoder.encode(dto.getRawPassword());
 
@@ -47,22 +51,29 @@ public class AccountService {
 
         log.info("registered user: {}", saved.getAccountId());
 
-        return saved.getRealName();
     }
 
     @Transactional(readOnly = true)
     public JwtTokenDTO login(AccountLoginRequestDTO dto) {
 
-        Account account = accountRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() ->
-                        new LoginException("Account Not Found"));
+        Authentication authentication;
 
-        if (!passwordEncoder.matches(dto.getRawPassword(), account.getPassword())) {
-            throw new LoginException("Invalid Password");
+        try {
+            authentication = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(
+                            dto.getEmail(),
+                            dto.getRawPassword()
+                    )
+            );
+        } catch (BadCredentialsException e) {
+            throw new LoginException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        String accessToken = jwtProvider.generateToken(account, 10);
-        String refreshToken = jwtProvider.generateToken(account, 60);
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Account account = userDetails.getAccount();
+
+        String accessToken = jwtProvider.generateAccessToken(account);
+        String refreshToken = jwtProvider.generateRefreshToken(account);
 
         refreshTokenRepository.save(account.getAccountId().toString(), refreshToken);
 
@@ -74,7 +85,6 @@ public class AccountService {
     @Transactional(readOnly = true)
     public JwtTokenDTO refresh(String refreshToken) {
 
-
         Claims claims;
         // refreshToken 에서 정보 추출 및 토큰 만료 확인
         try {
@@ -85,33 +95,32 @@ public class AccountService {
             throw new RefreshTokenException("유효하지 않은 Refresh Token입니다.");
         }
 
+        if (!"REFRESH".equals(claims.get("tokenType", String.class))) {
+            throw new RefreshTokenException("Refresh Token이 아닙니다.");
+        }
+
         String accountId = claims.getSubject();
-        String email = claims.get("email", String.class);
-        String roleName = claims.get("roleName", String.class);
-
-        // redis 에서 확인
-        Optional<String> redisRefreshToken = refreshTokenRepository.find(accountId);
-
-        if (redisRefreshToken.isEmpty()) {
-            throw new RefreshTokenException("저장된 세션이 존재하지 않습니다.");
-        }
-
-        String savedRefreshToken = redisRefreshToken.get();
-
-        if (!savedRefreshToken.equals(refreshToken)) {
-            // 파기된 rt가 들어온경우
-            refreshTokenRepository.delete(accountId);
-
-            throw new RefreshTokenException("토큰 재사용 감지. 세션를 종료합니다.");
-        }
 
         Account account = accountRepository.findById(Long.valueOf(accountId))
                 .orElseThrow(() -> new RefreshTokenException("계정이 존재하지 않습니다."));
 
-        String newAccessToken = jwtProvider.generateToken(account, 10);
-        String newRefreshToken = jwtProvider.generateToken(account, 60);
+        String newAccessToken = jwtProvider.generateAccessToken(account);
+        String newRefreshToken = jwtProvider.generateRefreshToken(account);
 
-        refreshTokenRepository.save(accountId, newRefreshToken);
+        long result = refreshTokenRepository.rotate(
+                accountId,
+                refreshToken,
+                newRefreshToken
+        );
+
+        if (result == 0) {
+            throw new RefreshTokenException("저장된 세션이 존재하지 않습니다.");
+        }
+
+        if (result == -1) {
+            throw new RefreshTokenException("토큰 재사용 감지. 세션을 종료합니다.");
+        }
+
 
         return new JwtTokenDTO(newAccessToken, newRefreshToken);
     }
