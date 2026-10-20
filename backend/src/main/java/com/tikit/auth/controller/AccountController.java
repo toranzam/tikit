@@ -29,7 +29,7 @@ public class AccountController {
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(new ResponseDTO<>(1, "로그인 성공", tokenDTO));
+                .body(ResponseDTO.success("로그인 성공", tokenDTO));
     }
 
     @PostMapping("/signup")
@@ -37,7 +37,7 @@ public class AccountController {
         accountService.signupUser(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(new ResponseDTO<>(1, "회원가입이 성공하였습니다.", null));
+                .body(ResponseDTO.success("회원가입 성공."));
     }
 
     @PostMapping("/refresh")
@@ -47,11 +47,11 @@ public class AccountController {
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(new ResponseDTO<>(
-                        1,
-                        "토큰 재발급 성공",
-                        newJwtToken
-                ));
+                .body(ResponseDTO.success(
+                                "토큰 재발급 성공",
+                                newJwtToken
+                        )
+                );
     }
 
 

@@ -1,5 +1,6 @@
 package com.tikit.filter;
 
+import com.tikit.common.ErrorCode;
 import com.tikit.common.dto.ResponseDTO;
 import com.tikit.util.JWTProvider;
 import io.jsonwebtoken.Claims;
@@ -100,13 +101,14 @@ public class JWTCheckFilter extends OncePerRequestFilter {
 
     private void sendErrorResponse(HttpServletResponse response, String message) throws IOException {
 
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ErrorCode errorCode = ErrorCode.AUTHENTICATION_REQUIRED;
+
+        response.setStatus(errorCode.getStatus().value());
         response.setContentType("application/json;charset=UTF-8");
 
-        ResponseDTO<Object> responseDTO = new ResponseDTO<>(
-                -1,
-                message,
-                null
+        ResponseDTO<Void> responseDTO = ResponseDTO.fail(
+                errorCode,
+                message
         );
 
         PrintWriter printWriter = response.getWriter();
