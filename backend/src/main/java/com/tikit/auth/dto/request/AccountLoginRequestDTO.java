@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AccountLoginRequestDTO {
     private String email;
-    private String rawPassword;
+    private String password;
 }

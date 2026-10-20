@@ -38,7 +38,7 @@ public class AccountService {
     @Transactional
     public void signupUser(AccountRegisterRequestDTO dto) {
 
-        String encodedPw = passwordEncoder.encode(dto.getRawPassword());
+        String encodedPw = passwordEncoder.encode(dto.getPassword());
 
         Account account = Account.create(
                 dto.getEmail(),
@@ -62,7 +62,7 @@ public class AccountService {
             authentication = authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(
                             dto.getEmail(),
-                            dto.getRawPassword()
+                            dto.getPassword()
                     )
             );
         } catch (BadCredentialsException e) {

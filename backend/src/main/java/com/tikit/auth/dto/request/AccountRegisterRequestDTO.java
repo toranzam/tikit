@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AccountRegisterRequestDTO {
     private String email;
-    private String rawPassword;
+    private String password;
     private String realName;
 }
