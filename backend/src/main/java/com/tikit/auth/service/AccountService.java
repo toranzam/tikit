@@ -125,4 +125,8 @@ public class AccountService {
         return new JwtTokenDTO(newAccessToken, newRefreshToken);
     }
 
+    public void logout(String accountId) {
+        refreshTokenRepository.delete(accountId);
+
+    }
 }
