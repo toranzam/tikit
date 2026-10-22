@@ -32,7 +32,7 @@ public class SessionSeatService {
             return List.of();
         }
 
-        Long templateId = sessionSeats.get(0).getSeatTemplateId();
+        Long templateId = sessionSeats.getFirst().getSeatTemplateId();
 
         Map<Long, TemplateSeat> templateSeatMap =
                 templateSeatRepository.findByTemplateId(templateId)
