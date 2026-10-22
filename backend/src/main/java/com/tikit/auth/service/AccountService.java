@@ -3,7 +3,7 @@ package com.tikit.auth.service;
 import com.tikit.auth.dto.JwtTokenDTO;
 import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
-import com.tikit.auth.entity.Account;
+import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.Role;
 import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.exception.RefreshTokenException;
@@ -40,16 +40,16 @@ public class AccountService {
 
         String encodedPw = passwordEncoder.encode(dto.getPassword());
 
-        Account account = Account.create(
+        Member member = Member.create(
                 dto.getEmail(),
                 encodedPw,
                 dto.getRealName(),
-                Role.USER
+                Role.MEMBER
         );
 
-        Account saved = accountRepository.save(account);
+        Member saved = accountRepository.save(member);
 
-        log.info("registered user: {}", saved.getAccountId());
+        log.info("registered user: {}", saved.getId());
 
     }
 
@@ -70,14 +70,14 @@ public class AccountService {
         }
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Account account = userDetails.getAccount();
+        Member member = userDetails.getMember();
 
-        String accessToken = jwtProvider.generateAccessToken(account);
-        String refreshToken = jwtProvider.generateRefreshToken(account);
+        String accessToken = jwtProvider.generateAccessToken(member);
+        String refreshToken = jwtProvider.generateRefreshToken(member);
 
-        refreshTokenRepository.save(account.getAccountId().toString(), refreshToken);
+        refreshTokenRepository.save(member.getId().toString(), refreshToken);
 
-        log.info("login success: {}", account.getAccountId());
+        log.info("login success: {}", member.getId());
 
         return new JwtTokenDTO(accessToken, refreshToken);
     }
@@ -101,11 +101,11 @@ public class AccountService {
 
         String accountId = claims.getSubject();
 
-        Account account = accountRepository.findById(Long.valueOf(accountId))
+        Member member = accountRepository.findById(Long.valueOf(accountId))
                 .orElseThrow(() -> new RefreshTokenException("계정이 존재하지 않습니다."));
 
-        String newAccessToken = jwtProvider.generateAccessToken(account);
-        String newRefreshToken = jwtProvider.generateRefreshToken(account);
+        String newAccessToken = jwtProvider.generateAccessToken(member);
+        String newRefreshToken = jwtProvider.generateRefreshToken(member);
 
         long result = refreshTokenRepository.rotate(
                 accountId,

@@ -70,7 +70,6 @@ public class JWTCheckFilter extends OncePerRequestFilter {
 
             // 토큰에서 정보 추출
             String accountId = claims.getSubject();
-            String email = claims.get("email", String.class);
             String roleName = claims.get("roleName", String.class);
 
             log.info("JWT 검증 성공");

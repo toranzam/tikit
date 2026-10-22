@@ -1,7 +1,7 @@
 package com.tikit.auth.entity;
 
 public enum Role {
-    USER,
+    MEMBER,
     SELLER,
     ADMIN
 }

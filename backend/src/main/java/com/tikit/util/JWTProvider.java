@@ -1,6 +1,6 @@
 package com.tikit.util;
 
-import com.tikit.auth.entity.Account;
+import com.tikit.auth.entity.Member;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -29,14 +29,13 @@ public class JWTProvider {
         secretKey = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateAccessToken(Account account) {
+    public String generateAccessToken(Member member) {
         Date now = new Date() ;
         Date expire = new Date(now.getTime() + (long) ACCESS_TOKEN_EXPIRATION_MILLIS);
 
         return Jwts.builder()
-                .subject(account.getAccountId().toString())
-                .claim("email", account.getEmail())
-                .claim("roleName", account.getRoleName().toString())
+                .subject(member.getId().toString())
+                .claim("roleName", member.getRole().toString())
                 .claim("tokenType", "ACCESS")
                 .issuedAt(now)
                 .expiration(expire)
@@ -44,12 +43,12 @@ public class JWTProvider {
                 .compact();
     }
 
-    public String generateRefreshToken(Account account) {
+    public String generateRefreshToken(Member member) {
         Date now = new Date() ;
         Date expire = new Date(now.getTime() + (long) REFRESH_TOKEN_EXPIRATION_MILLIS);
 
         return Jwts.builder()
-                .subject(account.getAccountId().toString())
+                .subject(member.getId().toString())
                 .claim("tokenType", "REFRESH")
                 .id(UUID.randomUUID().toString())
                 .issuedAt(now)

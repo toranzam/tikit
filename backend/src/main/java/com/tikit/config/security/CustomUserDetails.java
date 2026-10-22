@@ -1,6 +1,6 @@
 package com.tikit.config.security;
 
-import com.tikit.auth.entity.Account;
+import com.tikit.auth.entity.Member;
 import lombok.Getter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -10,15 +10,15 @@ import java.util.List;
 @Getter
 public class CustomUserDetails extends User {
 
-    private final Account account;
+    private final Member member;
 
-    public CustomUserDetails(Account account) {
+    public CustomUserDetails(Member member) {
         super(
-                account.getEmail(),
-                account.getPassword(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + account.getRoleName().name()))
+                member.getEmail(),
+                member.getPasswordHash(),
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name()))
         );
-        this.account = account;
+        this.member = member;
     }
 
 
