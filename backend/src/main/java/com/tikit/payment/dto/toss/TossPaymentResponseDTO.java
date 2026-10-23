@@ -1,4 +1,4 @@
-package com.tikit.payment.client.dto;
+package com.tikit.payment.dto.toss;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record TossPaymentResponse(
+public record TossPaymentResponseDTO(
         String paymentKey,
         String orderId,
         String status,
