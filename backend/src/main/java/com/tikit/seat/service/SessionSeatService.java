@@ -2,9 +2,11 @@
 package com.tikit.seat.service;
 
 import com.tikit.seat.dto.response.SessionSeatResponseDTO;
+import com.tikit.seat.entity.SessionGradePrice;
 import com.tikit.seat.entity.SessionSeat;
 import com.tikit.seat.entity.TemplateSeat;
 import com.tikit.seat.repository.PerformanceSessionRepository;
+import com.tikit.seat.repository.SessionGradePriceRepository;
 import com.tikit.seat.repository.SessionSeatRepository;
 import com.tikit.seat.repository.TemplateSeatRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class SessionSeatService {
     private final PerformanceSessionRepository performanceSessionRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final TemplateSeatRepository templateSeatRepository;
+    private final SessionGradePriceRepository sessionGradePriceRepository;
 
     @Transactional(readOnly = true)
     public List<SessionSeatResponseDTO> getSeats(Long sessionId) {
@@ -53,10 +56,20 @@ public class SessionSeatService {
                                 Function.identity()
                         ));
 
+        Map<String, Long> priceMap =
+                sessionGradePriceRepository.findBySessionId(sessionId)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                SessionGradePrice::getGrade,
+                                SessionGradePrice::getPrice
+                        ));
+
         return sessionSeats.stream()
                 .map(seat -> {
                     TemplateSeat templateSeat =
                             templateSeatMap.get(seat.getTemplateSeatId());
+
+                    Long price = priceMap.get(seat.getGrade());
 
                     return new SessionSeatResponseDTO(
                             seat.getId(),
@@ -65,6 +78,7 @@ public class SessionSeatService {
                             templateSeat.getRowLabel(),
                             templateSeat.getSeatNumber(),
                             seat.getGrade(),
+                            price,
                             templateSeat.getX(),
                             templateSeat.getY(),
                             seat.getStatus()

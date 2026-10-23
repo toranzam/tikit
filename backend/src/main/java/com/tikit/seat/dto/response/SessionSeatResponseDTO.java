@@ -1,3 +1,4 @@
+
 package com.tikit.seat.dto.response;
 
 public record SessionSeatResponseDTO(
@@ -7,6 +8,7 @@ public record SessionSeatResponseDTO(
         String rowLabel,
         Integer seatNumber,
         String grade,
+        Long price,
         Integer x,
         Integer y,
         String status
