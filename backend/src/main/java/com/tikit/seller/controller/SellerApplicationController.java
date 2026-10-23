@@ -4,6 +4,7 @@ import com.tikit.common.dto.ResponseDTO;
 import com.tikit.seller.dto.SellerApplicationRequestDTO;
 import com.tikit.seller.dto.SellerApplicationResponseDTO;
 import com.tikit.seller.service.SellerApplicationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class SellerApplicationController {
     //판매자 등록 신청
     @PostMapping("/seller-applications")
     public ResponseEntity<ResponseDTO<SellerApplicationResponseDTO>> apply(
-            @AuthenticationPrincipal String accountId, @RequestBody SellerApplicationRequestDTO dto){
+            @AuthenticationPrincipal String accountId, @Valid @RequestBody SellerApplicationRequestDTO dto){
 
         SellerApplicationResponseDTO result = service.apply(Long.valueOf(accountId), dto);
 
