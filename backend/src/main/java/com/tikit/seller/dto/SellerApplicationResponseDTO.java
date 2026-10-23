@@ -1,5 +1,6 @@
 package com.tikit.seller.dto;
 
+import com.tikit.auth.entity.Member;
 import com.tikit.seller.entity.SellerApplication;
 import com.tikit.seller.entity.SellerApplicationStatus;
 import lombok.Getter;
@@ -16,7 +17,8 @@ public class SellerApplicationResponseDTO {
     private final String contactEmail;
     private final String description;
     private final List<String> evidenceUrls;
-    private final String rejectReason;
+    private final Member reviewerId;
+    private final String reviewReason;
     private final Instant reviewedAt;
     private final Long version;
     private final Instant createdAt;
@@ -28,10 +30,15 @@ public class SellerApplicationResponseDTO {
         this.contactEmail = a.getContactEmail();
         this.description = a.getDescription();
         this.evidenceUrls = a.getEvidenceUrls();
-        this.rejectReason = a.getRejectReason();
+        this.reviewerId = a.getReviewerId();
+        this.reviewReason = a.getReviewReason();
         this.reviewedAt = a.getReviewedAt();
         this.version = a.getVersion();
         this.createdAt = a.getCreatedAt();
+    }
+
+    public static SellerApplicationResponseDTO from(SellerApplication application){
+        return new SellerApplicationResponseDTO(application);
     }
 
 }

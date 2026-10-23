@@ -37,7 +37,7 @@ public class SellerApplication {
     @Column(name="contact_email", nullable = false, length = 254)
     private String contactEmail;
 
-    @Column(name="description", columnDefinition = "TEXT")
+    @Column(name="description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -48,23 +48,29 @@ public class SellerApplication {
     @Column(name="status", nullable = false, length = 20)
     private SellerApplicationStatus status;
 
-    @Column(name = "reject_reason")
-    private String rejectReason; //거절사유
-
-    @Column(name = "reviewed_at")
-    private Instant reviewedAt;//심사 시각
-
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id")
+    private Member reviewerId;
+
+    @Column(name = "review_reason", columnDefinition = "TEXT")
+    private String reviewReason; //거절사유
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;//심사 시각
 
     @CreatedDate
     @Column(name="created_at", updatable = false, nullable = false)
     private Instant createdAt;
 
+
     @LastModifiedDate
     @Column(name="updated_at", nullable = false)
     private Instant updatedAt;
+
 
     public static SellerApplication create(Member member, String businessName,
                                            String contactEmail, String description,
