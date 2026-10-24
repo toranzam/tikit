@@ -1,6 +1,6 @@
 package com.tikit.auth.controller;
 
-import com.tikit.auth.dto.JwtTokenDTO;
+import com.tikit.auth.dto.response.JwtTokenResponseDTO;
 import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
 import com.tikit.auth.service.AccountService;
@@ -25,8 +25,8 @@ public class AccountController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<JwtTokenDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
-        JwtTokenDTO tokenDTO = accountService.login(dto);
+    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
+        JwtTokenResponseDTO tokenDTO = accountService.login(dto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -42,9 +42,9 @@ public class AccountController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ResponseDTO<JwtTokenDTO>> refresh(@RequestBody JwtTokenDTO jwtTokenDTO) {
+    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> refresh(@RequestBody JwtTokenResponseDTO jwtTokenResponseDTO) {
 
-        JwtTokenDTO newJwtToken = accountService.refresh(jwtTokenDTO.getRefreshToken());
+        JwtTokenResponseDTO newJwtToken = accountService.refresh(jwtTokenResponseDTO.getRefreshToken());
 
         return ResponseEntity
                 .status(HttpStatus.OK)

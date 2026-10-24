@@ -1,6 +1,6 @@
 package com.tikit.auth.service;
 
-import com.tikit.auth.dto.JwtTokenDTO;
+import com.tikit.auth.dto.response.JwtTokenResponseDTO;
 import com.tikit.auth.dto.request.AccountLoginRequestDTO;
 import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
 import com.tikit.auth.entity.Member;
@@ -54,7 +54,7 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public JwtTokenDTO login(AccountLoginRequestDTO dto) {
+    public JwtTokenResponseDTO login(AccountLoginRequestDTO dto) {
 
         Authentication authentication;
 
@@ -79,11 +79,11 @@ public class AccountService {
 
         log.info("login success: {}", member.getId());
 
-        return new JwtTokenDTO(accessToken, refreshToken);
+        return new JwtTokenResponseDTO(accessToken, refreshToken);
     }
 
     @Transactional(readOnly = true)
-    public JwtTokenDTO refresh(String refreshToken) {
+    public JwtTokenResponseDTO refresh(String refreshToken) {
 
         Claims claims;
         // refreshToken 에서 정보 추출 및 토큰 만료 확인
@@ -122,7 +122,7 @@ public class AccountService {
         }
 
 
-        return new JwtTokenDTO(newAccessToken, newRefreshToken);
+        return new JwtTokenResponseDTO(newAccessToken, newRefreshToken);
     }
 
     public void logout(String accountId) {
