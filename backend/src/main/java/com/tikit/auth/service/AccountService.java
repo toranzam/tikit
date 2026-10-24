@@ -1,8 +1,8 @@
 package com.tikit.auth.service;
 
 import com.tikit.auth.dto.response.JwtTokenResponseDTO;
-import com.tikit.auth.dto.request.AccountLoginRequestDTO;
-import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
+import com.tikit.auth.dto.request.MemberLoginRequestDTO;
+import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.Role;
 import com.tikit.auth.exception.LoginException;
@@ -36,7 +36,7 @@ public class AccountService {
     private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public void signupUser(AccountRegisterRequestDTO dto) {
+    public void signupUser(MemberRegisterRequestDTO dto) {
 
         String encodedPw = passwordEncoder.encode(dto.getPassword());
 
@@ -54,7 +54,7 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public JwtTokenResponseDTO login(AccountLoginRequestDTO dto) {
+    public JwtTokenResponseDTO login(MemberLoginRequestDTO dto) {
 
         Authentication authentication;
 

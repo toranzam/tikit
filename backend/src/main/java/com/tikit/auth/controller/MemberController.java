@@ -1,8 +1,8 @@
 package com.tikit.auth.controller;
 
 import com.tikit.auth.dto.response.JwtTokenResponseDTO;
-import com.tikit.auth.dto.request.AccountLoginRequestDTO;
-import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
+import com.tikit.auth.dto.request.MemberLoginRequestDTO;
+import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
 import com.tikit.auth.service.AccountService;
 import com.tikit.common.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 @Slf4j
 @RequiredArgsConstructor
-public class AccountController {
+public class MemberController {
 
     private final AccountService accountService;
 
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
+    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> login(@RequestBody MemberLoginRequestDTO dto) {
         JwtTokenResponseDTO tokenDTO = accountService.login(dto);
 
         return ResponseEntity
@@ -34,7 +34,7 @@ public class AccountController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody AccountRegisterRequestDTO dto) {
+    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody MemberRegisterRequestDTO dto) {
         accountService.signupUser(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
