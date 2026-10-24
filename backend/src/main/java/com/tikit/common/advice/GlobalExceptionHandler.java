@@ -21,6 +21,6 @@ public class GlobalExceptionHandler {
                 .status(errorCode.getStatus())
                 .body(ResponseDTO.fail(
                         errorCode,
-                        "JSON 파싱에 실패하였습니다."));
+                        "요청 본문이 없거나 JSON 형식이 올바르지 않습니다."));
     }
 }
