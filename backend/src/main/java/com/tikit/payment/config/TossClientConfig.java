@@ -15,7 +15,7 @@ import java.util.Base64;
 public class TossClientConfig {
 
     @Bean
-    public RestClient tossRestClient(TossProperties properties, TossProperties tossProperties) {
+    public RestClient tossRestClient(TossProperties tossProperties) {
         String credentials = Base64.getEncoder()
                 .encodeToString((tossProperties.secretKey() + ":").getBytes(StandardCharsets.UTF_8));
 
