@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AccountService {
+public class MemberService {
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,14 +36,14 @@ public class AccountService {
     private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public void signupUser(MemberRegisterRequestDTO dto) {
+    public void signupMember(MemberRegisterRequestDTO dto) {
 
         String encodedPw = passwordEncoder.encode(dto.getPassword());
 
         Member member = Member.create(
                 dto.getEmail(),
                 encodedPw,
-                dto.getRealName(),
+                dto.getName(),
                 Role.MEMBER
         );
 

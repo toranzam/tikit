@@ -3,7 +3,7 @@ package com.tikit.auth.controller;
 import com.tikit.auth.dto.response.JwtTokenResponseDTO;
 import com.tikit.auth.dto.request.MemberLoginRequestDTO;
 import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
-import com.tikit.auth.service.AccountService;
+import com.tikit.auth.service.MemberService;
 import com.tikit.common.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class MemberController {
 
-    private final AccountService accountService;
+    private final MemberService memberService;
 
 
     @PostMapping("/login")
     public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> login(@RequestBody MemberLoginRequestDTO dto) {
-        JwtTokenResponseDTO tokenDTO = accountService.login(dto);
+        JwtTokenResponseDTO tokenDTO = memberService.login(dto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -35,7 +35,7 @@ public class MemberController {
 
     @PostMapping("/signup")
     public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody MemberRegisterRequestDTO dto) {
-        accountService.signupUser(dto);
+        memberService.signupMember(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ResponseDTO.success("회원가입 성공."));
@@ -44,7 +44,7 @@ public class MemberController {
     @PostMapping("/refresh")
     public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> refresh(@RequestBody JwtTokenResponseDTO jwtTokenResponseDTO) {
 
-        JwtTokenResponseDTO newJwtToken = accountService.refresh(jwtTokenResponseDTO.getRefreshToken());
+        JwtTokenResponseDTO newJwtToken = memberService.refresh(jwtTokenResponseDTO.getRefreshToken());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -57,7 +57,7 @@ public class MemberController {
 
     @PostMapping("/logout")
     public ResponseEntity<ResponseDTO<Void>> logout(@AuthenticationPrincipal String accountId) {
-        accountService.logout(accountId);
+        memberService.logout(accountId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
