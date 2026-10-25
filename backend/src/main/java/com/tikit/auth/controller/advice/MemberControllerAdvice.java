@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 @Slf4j
-public class AccountControllerAdvice {
+public class MemberControllerAdvice {
 
     @ExceptionHandler(LoginException.class)
     public ResponseEntity<ResponseDTO<Void>> handleLoginException(LoginException e) {
