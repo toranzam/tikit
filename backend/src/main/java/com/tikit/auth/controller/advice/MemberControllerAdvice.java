@@ -35,8 +35,7 @@ public class MemberControllerAdvice {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ResponseDTO.fail(
-                        errorCode,
-                        e.getMessage()
+                        errorCode
                 ));
     }
 
