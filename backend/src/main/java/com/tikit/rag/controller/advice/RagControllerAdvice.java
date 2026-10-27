@@ -4,42 +4,13 @@ import com.tikit.common.ErrorCode;
 import com.tikit.common.dto.ResponseDTO;
 import com.tikit.rag.exception.RagException;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 @RestControllerAdvice(basePackages = "com.tikit.rag.controller")
 public class RagControllerAdvice {
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ResponseDTO<Void>> handleAccessDeniedException(
-            AccessDeniedException exception
-    ) {
-        return ResponseEntity.status(ErrorCode.ACCESS_DENIED.getStatus())
-                .body(ResponseDTO.fail(ErrorCode.ACCESS_DENIED));
-    }
-
-    @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<ResponseDTO<Void>> handleMethodValidationException(
-            HandlerMethodValidationException exception
-    ) {
-        if (exception.isForReturnValue()) {
-            throw exception;
-        }
-
-        String message = exception.getParameterValidationResults().stream()
-                .flatMap(result -> result.getResolvableErrors().stream())
-                .map(error -> error.getDefaultMessage())
-                .filter(java.util.Objects::nonNull)
-                .findFirst()
-                .orElse("입력값을 확인해 주세요.");
-
-        return ResponseEntity.badRequest()
-                .body(ResponseDTO.fail(ErrorCode.VALIDATION_ERROR, message));
-    }
 
     // Service 또는 Controller에서 던진 RAG 예외 처리
     @ExceptionHandler(RagException.class)
@@ -60,7 +31,8 @@ public class RagControllerAdvice {
         String message = exception.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(error -> error.getDefaultMessage())
+                .map(error -> java.util.Objects.requireNonNullElse(
+                        error.getDefaultMessage(), "입력값을 확인해 주세요."))
                 .findFirst()
                 .orElse("입력값을 확인해 주세요.");
 

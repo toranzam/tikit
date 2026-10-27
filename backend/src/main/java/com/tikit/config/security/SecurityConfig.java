@@ -68,7 +68,6 @@ public class SecurityConfig {
                                         "/v3/api-docs/**"
                                 )
                                 .permitAll()
-                                .requestMatchers("/api/v1/admin/rag/documents", "/api/v1/admin/rag/documents/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtCheckFilter, UsernamePasswordAuthenticationFilter.class);

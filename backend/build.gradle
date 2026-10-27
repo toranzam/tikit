@@ -2,8 +2,6 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
-    id 'org.jetbrains.kotlin.jvm'
-    id "org.jetbrains.kotlin.plugin.lombok" version '2.4.20'
 }
 
 group = 'com.tikit'
@@ -38,12 +36,12 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testRuntimeOnly 'com.h2database:h2'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 }
 

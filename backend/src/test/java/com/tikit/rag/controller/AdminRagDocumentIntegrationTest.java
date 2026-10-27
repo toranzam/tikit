@@ -1,0 +1,209 @@
+package com.tikit.rag.controller;
+
+import com.tikit.rag.controller.advice.RagControllerAdvice;
+import com.tikit.rag.repository.*;
+import com.tikit.rag.service.RagDocumentService;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.*;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.*;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import javax.sql.DataSource;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/** Real JPA transactions; deliberately no test-level transaction that could hide commit/rollback bugs. */
+@SpringJUnitConfig(AdminRagDocumentIntegrationTest.Config.class)
+class AdminRagDocumentIntegrationTest {
+    private static final String URL = "/api/v1/admin/rag/documents";
+    @Autowired AdminRagDocumentController controller;
+    @Autowired JdbcTemplate jdbc;
+    private MockMvc mvc;
+
+    @BeforeEach
+    void setUp() {
+        jdbc.update("delete from rag_index_jobs");
+        jdbc.update("delete from rag_document_versions");
+        jdbc.update("delete from rag_documents");
+        authenticate("ADMIN");
+        mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .setControllerAdvice(new RagControllerAdvice()).build();
+    }
+
+    @AfterEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void createsDocumentVersionAndQueuedJobThenReadsDetail() throws Exception {
+        String location = create("Policy", "Policy content");
+        mvc.perform(get(location))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Policy"))
+                .andExpect(jsonPath("$.data.content").value("Policy content"))
+                .andExpect(jsonPath("$.data.createdBy").value(42))
+                .andExpect(jsonPath("$.data.latestVersion").value(1))
+                .andExpect(jsonPath("$.data.indexStatus").value("QUEUED"));
+        assertCounts(1);
+        assertThat(jdbc.queryForObject("select content_hash from rag_document_versions", String.class))
+                .isEqualTo(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                        .digest("Policy content".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+        assertThat(jdbc.queryForMap("select document_id, document_version, status, attempt_count, requested_by from rag_index_jobs"))
+                .containsEntry("DOCUMENT_ID", Long.valueOf(location.substring(location.lastIndexOf('/') + 1)))
+                .containsEntry("DOCUMENT_VERSION", 1).containsEntry("STATUS", "QUEUED")
+                .containsEntry("ATTEMPT_COUNT", 0).containsEntry("REQUESTED_BY", 42L);
+    }
+
+    @Test
+    void listsNewestFirstWithPaginationAndExcludesDeletedAndOtherTypes() throws Exception {
+        create("First", "one");
+        create("Second", "two");
+        create("Deleted", "three");
+        jdbc.update("update rag_documents set deleted_at = current_timestamp where id = (select max(id) from rag_documents)");
+        create("Performance", "four");
+        jdbc.update("update rag_documents set type = 'PERFORMANCE' where id = (select max(id) from rag_documents)");
+        mvc.perform(get(URL).param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].title").value("Second"))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(2));
+        mvc.perform(get(URL).param("size", "1").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].title").value("First"));
+    }
+
+    @Test
+    void missingDeletedAndOtherTypeDetailsReturn404() throws Exception {
+        mvc.perform(get(URL + "/999999")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+        String deleted = create("Deleted", "content");
+        jdbc.update("update rag_documents set deleted_at = current_timestamp");
+        mvc.perform(get(deleted)).andExpect(status().isNotFound());
+        String other = create("Other", "content");
+        jdbc.update("update rag_documents set type = 'PERFORMANCE'");
+        mvc.perform(get(other)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void invalidBodiesDoNotWriteAnyRows() throws Exception {
+        for (String body : List.of("{}", "{\"title\":\"ok\",\"content\":\" \"}",
+                "{\"title\":\"" + "x".repeat(201) + "\",\"content\":\"ok\"}")) {
+            mvc.perform(post(URL).contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        }
+        assertCounts(0);
+    }
+
+    @Test
+    void memberCannotInvokeAnyAdminOperation() {
+        authenticate("MEMBER");
+        assertThatThrownBy(() -> controller.getDocuments(0, 10))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> controller.getDocument(1L))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> controller.createDocument("42",
+                new com.tikit.rag.dto.request.RagDocumentCreateRequest("title", "content")))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertCounts(0);
+    }
+
+    @Test
+    void versionFlushFailureRollsBackDocumentAndPreservesExistingData() throws Exception {
+        create("Existing", "existing");
+        jdbc.execute("alter table rag_document_versions add constraint reject_test_version check (title <> 'Rejected')");
+        try {
+            assertThatThrownBy(() -> create("Rejected", "content"))
+                    .hasRootCauseInstanceOf(java.sql.SQLException.class);
+            assertCounts(1);
+            assertThat(jdbc.queryForObject("select title from rag_document_versions", String.class)).isEqualTo("Existing");
+        } finally {
+            jdbc.execute("alter table rag_document_versions drop constraint reject_test_version");
+        }
+        create("Recovery", "content");
+        assertCounts(2);
+    }
+
+    @Test
+    void jobInsertFailureRollsBackAlreadyFlushedDocumentAndVersion() throws Exception {
+        create("Existing", "existing");
+        jdbc.execute("alter table rag_index_jobs add constraint reject_test_job check (requested_by <> 43)");
+        try {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken("43", "", List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+            assertThatThrownBy(() -> create("Rejected", "content"))
+                    .hasRootCauseInstanceOf(java.sql.SQLException.class);
+            assertCounts(1);
+            assertThat(jdbc.queryForObject("select title from rag_document_versions", String.class)).isEqualTo("Existing");
+        } finally {
+            jdbc.execute("alter table rag_index_jobs drop constraint reject_test_job");
+            authenticate("ADMIN");
+        }
+        create("Recovery", "content");
+        assertCounts(2);
+    }
+
+    private String create(String title, String content) throws Exception {
+        return mvc.perform(post(URL).contentType("application/json")
+                        .content("{\"title\":\"" + title + "\",\"content\":\"" + content + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith(URL + "/")))
+                .andReturn().getResponse().getHeader("Location");
+    }
+
+    private void assertCounts(long count) {
+        for (String table : List.of("rag_documents", "rag_document_versions", "rag_index_jobs")) {
+            assertThat(jdbc.queryForObject("select count(*) from " + table, Long.class)).as(table).isEqualTo(count);
+        }
+    }
+
+    private void authenticate(String role) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("42", "", List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+    }
+
+    @Configuration
+    @EnableJpaRepositories(basePackageClasses = RagDocumentRepository.class)
+    @EnableJpaAuditing
+    @EnableTransactionManagement
+    @EnableMethodSecurity
+    @Import({RagDocumentService.class, AdminRagDocumentController.class})
+    static class Config {
+        @Bean DataSource dataSource() {
+            return new DriverManagerDataSource("jdbc:h2:mem:rag_api;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+        }
+        @Bean LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+            var factory = new LocalContainerEntityManagerFactoryBean();
+            factory.setDataSource(dataSource);
+            factory.setPackagesToScan("com.tikit.rag.entity");
+            factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+            factory.setJpaPropertyMap(Map.of("hibernate.hbm2ddl.auto", "create-drop"));
+            return factory;
+        }
+        @Bean JpaTransactionManager transactionManager(jakarta.persistence.EntityManagerFactory factory) {
+            return new JpaTransactionManager(factory);
+        }
+        @Bean JdbcTemplate jdbcTemplate(DataSource source) { return new JdbcTemplate(source); }
+    }
+}
