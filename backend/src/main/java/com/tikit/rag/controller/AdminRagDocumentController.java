@@ -1,13 +1,14 @@
 package com.tikit.rag.controller;
 
-import com.tikit.common.ErrorCode;
 import com.tikit.common.dto.ResponseDTO;
 import com.tikit.rag.dto.request.RagDocumentCreateRequest;
 import com.tikit.rag.dto.response.RagDocumentDetailResponse;
 import com.tikit.rag.dto.response.RagDocumentPageResponse;
-import com.tikit.rag.exception.RagException;
 import com.tikit.rag.service.RagDocumentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -48,13 +49,12 @@ public class AdminRagDocumentController {
     // 공통 정책 문서 목록 조회
     @GetMapping
     public ResponseEntity<ResponseDTO<RagDocumentPageResponse>> getDocuments(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "0")
+            @Min(value = 0, message = "페이지는 0 이상이어야 합니다.") int page,
+            @RequestParam(defaultValue = "10")
+            @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다.")
+            @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다.") int size
     ) {
-        if (page < 0 || size < 1 || size > 100) {
-            throw new RagException(ErrorCode.VALIDATION_ERROR);
-        }
-
         PageRequest pageable = PageRequest.of(
                 page,
                 size,
@@ -73,7 +73,8 @@ public class AdminRagDocumentController {
     // 공통 정책 문서 상세 조회
     @GetMapping("/{id}")
     public ResponseEntity<ResponseDTO<RagDocumentDetailResponse>> getDocument(
-            @PathVariable("id") Long documentId
+            @PathVariable("id")
+            @Positive(message = "문서 ID는 양수여야 합니다.") Long documentId
     ) {
         RagDocumentDetailResponse response =
                 ragDocumentService.getDocument(documentId);
