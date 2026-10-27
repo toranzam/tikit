@@ -1,11 +1,11 @@
-package com.tikit.auth.dto;
+package com.tikit.auth.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class JwtTokenDTO {
+public class JwtTokenResponseDTO {
     private final String accessToken;
     private final String refreshToken;
 }
