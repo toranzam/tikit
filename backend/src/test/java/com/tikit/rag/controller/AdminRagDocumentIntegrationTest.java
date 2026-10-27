@@ -65,6 +65,9 @@ class AdminRagDocumentIntegrationTest {
                 .andExpect(jsonPath("$.data.latestVersion").value(1))
                 .andExpect(jsonPath("$.data.indexStatus").value("QUEUED"));
         assertCounts(1);
+        assertThat(jdbc.queryForMap("select type, performance_id, latest_version, active_version from rag_documents"))
+                .containsEntry("TYPE", "POLICY").containsEntry("PERFORMANCE_ID", null)
+                .containsEntry("LATEST_VERSION", 1).containsEntry("ACTIVE_VERSION", null);
         assertThat(jdbc.queryForObject("select content_hash from rag_document_versions", String.class))
                 .isEqualTo(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
                         .digest("Policy content".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
