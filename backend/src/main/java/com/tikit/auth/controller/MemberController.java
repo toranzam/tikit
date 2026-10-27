@@ -1,9 +1,9 @@
 package com.tikit.auth.controller;
 
-import com.tikit.auth.dto.JwtTokenDTO;
-import com.tikit.auth.dto.request.AccountLoginRequestDTO;
-import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
-import com.tikit.auth.service.AccountService;
+import com.tikit.auth.dto.response.JwtTokenResponseDTO;
+import com.tikit.auth.dto.request.MemberLoginRequestDTO;
+import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
+import com.tikit.auth.service.MemberService;
 import com.tikit.common.dto.ResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 @Slf4j
 @RequiredArgsConstructor
-public class AccountController {
+public class MemberController {
 
-    private final AccountService accountService;
+    private final MemberService memberService;
 
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<JwtTokenDTO>> login(@RequestBody AccountLoginRequestDTO dto) {
-        JwtTokenDTO tokenDTO = accountService.login(dto);
+    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> login(@RequestBody MemberLoginRequestDTO dto) {
+        JwtTokenResponseDTO tokenDTO = memberService.login(dto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -34,17 +34,17 @@ public class AccountController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody AccountRegisterRequestDTO dto) {
-        accountService.signupUser(dto);
+    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody MemberRegisterRequestDTO dto) {
+        memberService.signupMember(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ResponseDTO.success("회원가입 성공."));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ResponseDTO<JwtTokenDTO>> refresh(@RequestBody JwtTokenDTO jwtTokenDTO) {
+    public ResponseEntity<ResponseDTO<JwtTokenResponseDTO>> refresh(@RequestBody JwtTokenResponseDTO jwtTokenResponseDTO) {
 
-        JwtTokenDTO newJwtToken = accountService.refresh(jwtTokenDTO.getRefreshToken());
+        JwtTokenResponseDTO newJwtToken = memberService.refresh(jwtTokenResponseDTO.getRefreshToken());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -57,7 +57,7 @@ public class AccountController {
 
     @PostMapping("/logout")
     public ResponseEntity<ResponseDTO<Void>> logout(@AuthenticationPrincipal String accountId) {
-        accountService.logout(accountId);
+        memberService.logout(accountId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

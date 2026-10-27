@@ -1,8 +1,8 @@
 package com.tikit.auth.service;
 
-import com.tikit.auth.dto.JwtTokenDTO;
-import com.tikit.auth.dto.request.AccountLoginRequestDTO;
-import com.tikit.auth.dto.request.AccountRegisterRequestDTO;
+import com.tikit.auth.dto.response.JwtTokenResponseDTO;
+import com.tikit.auth.dto.request.MemberLoginRequestDTO;
+import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.Role;
 import com.tikit.auth.exception.LoginException;
@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AccountService {
+public class MemberService {
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,14 +36,14 @@ public class AccountService {
     private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public void signupUser(AccountRegisterRequestDTO dto) {
+    public void signupMember(MemberRegisterRequestDTO dto) {
 
         String encodedPw = passwordEncoder.encode(dto.getPassword());
 
         Member member = Member.create(
                 dto.getEmail(),
                 encodedPw,
-                dto.getRealName(),
+                dto.getName(),
                 Role.MEMBER
         );
 
@@ -54,7 +54,7 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public JwtTokenDTO login(AccountLoginRequestDTO dto) {
+    public JwtTokenResponseDTO login(MemberLoginRequestDTO dto) {
 
         Authentication authentication;
 
@@ -79,11 +79,11 @@ public class AccountService {
 
         log.info("login success: {}", member.getId());
 
-        return new JwtTokenDTO(accessToken, refreshToken);
+        return new JwtTokenResponseDTO(accessToken, refreshToken);
     }
 
     @Transactional(readOnly = true)
-    public JwtTokenDTO refresh(String refreshToken) {
+    public JwtTokenResponseDTO refresh(String refreshToken) {
 
         Claims claims;
         // refreshToken 에서 정보 추출 및 토큰 만료 확인
@@ -122,7 +122,7 @@ public class AccountService {
         }
 
 
-        return new JwtTokenDTO(newAccessToken, newRefreshToken);
+        return new JwtTokenResponseDTO(newAccessToken, newRefreshToken);
     }
 
     public void logout(String accountId) {
