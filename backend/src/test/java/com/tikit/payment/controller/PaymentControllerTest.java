@@ -1,5 +1,7 @@
 package com.tikit.payment.controller;
 
+import com.tikit.auth.entity.Member;
+import com.tikit.auth.entity.Role;
 import com.tikit.util.JWTProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -41,5 +44,35 @@ public class PaymentControllerTest {
         // then
         assertThat(httpStatusCode).isEqualTo(401);
         resultActions.andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 결제 시도를 조회하면 404를 반환")
+    void get_payment_attempt_not_found() throws Exception {
+        // given
+        Member member = Member.create(
+                "payment-test@example.com",
+                "encodedPassword",
+                "tester",
+                Role.MEMBER
+        );
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        String accessToken = jwtProvider.generateAccessToken(member);
+
+        // when
+        ResultActions resultActions = mvc.perform(
+                get("/api/v1/payment-attempts/999999999")
+                        .header("Authorization", "Bearer " + accessToken)
+        );
+
+        String responseBody = resultActions.andReturn().getResponse().getContentAsString();
+        int httpStatusCode = resultActions.andReturn().getResponse().getStatus();
+
+        System.out.println("테스트: " + responseBody);
+        System.out.println("테스트: " + httpStatusCode);
+
+        assertThat(httpStatusCode).isEqualTo(404);
+        resultActions.andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
     }
 }
