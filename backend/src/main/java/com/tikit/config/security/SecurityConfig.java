@@ -1,3 +1,4 @@
+
 package com.tikit.config.security;
 
 
@@ -7,6 +8,7 @@ import jakarta.servlet.DispatcherType;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -66,6 +68,11 @@ public class SecurityConfig {
                                         "/swagger-ui/**",
                                         "/v3/api-docs",
                                         "/v3/api-docs/**"
+                                )
+                                .permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/sessions/*/seats"
                                 )
                                 .permitAll()
                                 .anyRequest().authenticated()
