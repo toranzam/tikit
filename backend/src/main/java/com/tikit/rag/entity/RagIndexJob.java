@@ -52,7 +52,18 @@ public class RagIndexJob {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+    public void fail(String owner, String code, Instant completedAt) {
+        if (status != RagIndexJobStatus.RUNNING || !Objects.equals(leaseOwner, owner)) {
+            throw new IllegalStateException("선점한 워커만 실행 중인 작업을 실패 처리할 수 있습니다.");
+        }
+        failureCode = Objects.requireNonNull(code, "실패 코드는 필수입니다.");
+        this.completedAt = Objects.requireNonNull(completedAt, "완료 시각은 필수입니다.");
+        status = RagIndexJobStatus.FAILED;
+        leaseOwner = null;
+        leaseUntil = null;
+    }
 
+//필수 아이디와 버전을 확인한 뒤 큐,attemptCount=0으로 초기화한다
     public static RagIndexJob createQueued(
             Long documentId,
             Integer documentVersion,
