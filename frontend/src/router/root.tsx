@@ -1,20 +1,21 @@
-import { createBrowserRouter } from "react-router";
-import SeatSelectionPage from "../pages/SeatSelectionPage";
 
-// 애플리케이션의 페이지 경로를 관리하는 라우터
+import { createBrowserRouter } from 'react-router'
+import MainLayout from '../layouts/MainLayout'
+import HomePage from '../pages/HomePage'
+import LoginPage from '../pages/auth/LoginPage'
+import SignupPage from '../pages/auth/SignupPage'
+import SeatSelectionPage from '../pages/SeatSelectionPage'
+
 const router = createBrowserRouter([
-    {
-        // 메인 페이지
-        path: "/",
-        element: <div>Hello World</div>,
-    },
-    {
-        // 공연 회차별 좌석 선택 페이지
-        // :sessionId는 URL에서 공연 회차 ID를 전달받는 동적 경로
-        // 예시: /sessions/1/seats
-        path: "/sessions/:sessionId/seats",
-        element: <SeatSelectionPage />,
-    },
-]);
+  {
+    element: <MainLayout />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/signup', element: <SignupPage /> },
+      { path: '/sessions/:sessionId/seats', element: <SeatSelectionPage /> },
+    ],
+  },
+])
 
-export default router;
+export default router
