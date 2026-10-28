@@ -25,3 +25,24 @@ export async function login(request: LoginRequest) {
     return response.data
 }
 
+interface SignupRequest {
+    email: string
+    password: string
+    name: string
+}
+
+interface SignupResponse {
+    code: string
+    message: string
+    data: null
+}
+
+export async function signup(request: SignupRequest) {
+    const response = await apiClient.post<SignupResponse>(
+        `${API_PREFIX}/signup`,
+        request
+    );
+
+    return response.data;
+}
+
