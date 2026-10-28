@@ -13,6 +13,7 @@ import com.tikit.rag.entity.RagIndexStatus;
 import com.tikit.rag.service.RagDocumentService;
 import com.tikit.util.JWTProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -57,6 +58,7 @@ class AdminRagDocumentSecurityTest {
     }
 
     @Test
+    @DisplayName("미인증 사용자는 문서 등록과 목록 및 상세 조회 시 401을 받는다")
     void anonymousReceives401ForAllThreeEndpoints() throws Exception {
         for (var request : requests()) {
             mvc.perform(request).andExpect(status().isUnauthorized())
@@ -66,6 +68,7 @@ class AdminRagDocumentSecurityTest {
     }
 
     @Test
+    @DisplayName("일반 회원의 JWT로 문서 등록과 목록 및 상세 조회를 요청하면 403을 반환한다")
     void memberJwtReceives403ForAllThreeEndpoints() throws Exception {
         String token = jwtProvider.generateAccessToken(member(Role.MEMBER));
         for (var request : requests()) {
@@ -77,6 +80,7 @@ class AdminRagDocumentSecurityTest {
     }
 
     @Test
+    @DisplayName("관리자의 JWT로 문서를 등록하고 목록과 상세를 조회할 수 있다")
     void adminJwtCanCreateListAndReadDetail() throws Exception {
         var detail = new RagDocumentDetailResponse(1L, RagDocumentType.POLICY, "Policy", "Content",
                 1, null, RagIndexStatus.QUEUED, 42L, Instant.now(), Instant.now());
@@ -99,6 +103,7 @@ class AdminRagDocumentSecurityTest {
     }
 
     @Test
+    @DisplayName("유효하지 않은 JWT는 401을 반환하고 서비스를 호출하지 않는다")
     void invalidJwtReceives401WithoutCallingService() throws Exception {
         for (var request : requests()) {
             mvc.perform(request.header("Authorization", "Bearer invalid-token"))
@@ -109,6 +114,7 @@ class AdminRagDocumentSecurityTest {
     }
 
     @Test
+    @DisplayName("리프레시 토큰으로 관리자 문서 API에 접근하면 401을 반환한다")
     void refreshTokenCannotAccessAdminEndpoints() throws Exception {
         String token = jwtProvider.generateRefreshToken(member(Role.ADMIN));
         for (var request : requests()) {

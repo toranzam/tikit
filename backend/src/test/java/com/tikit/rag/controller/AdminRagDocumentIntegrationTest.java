@@ -55,6 +55,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("정책 문서 등록 시 최초 버전과 대기 중인 인덱싱 작업을 저장하고 상세 조회한다")
     void createsDocumentVersionAndQueuedJobThenReadsDetail() throws Exception {
         String location = create("Policy", "Policy content");
         mvc.perform(get(location))
@@ -78,6 +79,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("삭제된 문서와 다른 유형을 제외한 정책 문서를 최신순으로 페이징 조회한다")
     void listsNewestFirstWithPaginationAndExcludesDeletedAndOtherTypes() throws Exception {
         create("First", "one");
         create("Second", "two");
@@ -96,6 +98,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("존재하지 않거나 삭제되었거나 다른 유형인 문서를 조회하면 404를 반환한다")
     void missingDeletedAndOtherTypeDetailsReturn404() throws Exception {
         mvc.perform(get(URL + "/999999")).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
@@ -108,6 +111,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("유효하지 않은 등록 요청은 400을 반환하고 데이터를 저장하지 않는다")
     void invalidBodiesDoNotWriteAnyRows() throws Exception {
         for (String body : List.of("{}", "{\"title\":\"ok\",\"content\":\" \"}",
                 "{\"title\":\"" + "x".repeat(201) + "\",\"content\":\"ok\"}")) {
@@ -119,6 +123,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("일반 회원은 관리자 문서 등록과 목록 및 상세 조회를 실행할 수 없다")
     void memberCannotInvokeAnyAdminOperation() {
         authenticate("MEMBER");
         assertThatThrownBy(() -> controller.getDocuments(0, 10))
@@ -132,6 +137,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("버전 저장 반영에 실패하면 문서 등록을 롤백하고 기존 데이터를 유지한다")
     void versionFlushFailureRollsBackDocumentAndPreservesExistingData() throws Exception {
         create("Existing", "existing");
         jdbc.execute("alter table rag_document_versions add constraint reject_test_version check (title <> 'Rejected')");
@@ -148,6 +154,7 @@ class AdminRagDocumentIntegrationTest {
     }
 
     @Test
+    @DisplayName("인덱싱 작업 저장에 실패하면 이미 반영된 문서와 버전도 롤백한다")
     void jobInsertFailureRollsBackAlreadyFlushedDocumentAndVersion() throws Exception {
         create("Existing", "existing");
         jdbc.execute("alter table rag_index_jobs add constraint reject_test_job check (requested_by <> 43)");
