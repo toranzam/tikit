@@ -3,9 +3,11 @@ package com.tikit.rag.controller;
 import com.tikit.rag.controller.advice.RagControllerAdvice;
 import com.tikit.rag.repository.*;
 import com.tikit.rag.service.RagDocumentService;
+import com.tikit.rag.support.IsolatedPostgresDataSource;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
+import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,14 +19,18 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -32,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Real JPA transactions; deliberately no test-level transaction that could hide commit/rollback bugs. */
 @SpringJUnitConfig(AdminRagDocumentIntegrationTest.Config.class)
+@TestPropertySource("classpath:application-rag-test.properties")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AdminRagDocumentIntegrationTest {
     private static final String URL = "/api/v1/admin/rag/documents";
     @Autowired AdminRagDocumentController controller;
@@ -67,15 +75,15 @@ class AdminRagDocumentIntegrationTest {
                 .andExpect(jsonPath("$.data.indexStatus").value("QUEUED"));
         assertCounts(1);
         assertThat(jdbc.queryForMap("select type, performance_id, latest_version, active_version from rag_documents"))
-                .containsEntry("TYPE", "POLICY").containsEntry("PERFORMANCE_ID", null)
-                .containsEntry("LATEST_VERSION", 1).containsEntry("ACTIVE_VERSION", null);
+                .containsEntry("type", "POLICY").containsEntry("performance_id", null)
+                .containsEntry("latest_version", 1).containsEntry("active_version", null);
         assertThat(jdbc.queryForObject("select content_hash from rag_document_versions", String.class))
                 .isEqualTo(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
                         .digest("Policy content".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
         assertThat(jdbc.queryForMap("select document_id, document_version, status, attempt_count, requested_by from rag_index_jobs"))
-                .containsEntry("DOCUMENT_ID", Long.valueOf(location.substring(location.lastIndexOf('/') + 1)))
-                .containsEntry("DOCUMENT_VERSION", 1).containsEntry("STATUS", "QUEUED")
-                .containsEntry("ATTEMPT_COUNT", 0).containsEntry("REQUESTED_BY", 42L);
+                .containsEntry("document_id", Long.valueOf(location.substring(location.lastIndexOf('/') + 1)))
+                .containsEntry("document_version", 1).containsEntry("status", "QUEUED")
+                .containsEntry("attempt_count", 0).containsEntry("requested_by", 42L);
     }
 
     @Test
@@ -143,7 +151,8 @@ class AdminRagDocumentIntegrationTest {
         jdbc.execute("alter table rag_document_versions add constraint reject_test_version check (title <> 'Rejected')");
         try {
             assertThatThrownBy(() -> create("Rejected", "content"))
-                    .hasRootCauseInstanceOf(java.sql.SQLException.class);
+                    .rootCause().isInstanceOfSatisfying(SQLException.class,
+                            cause -> assertThat(cause.getSQLState()).isEqualTo("23514"));
             assertCounts(1);
             assertThat(jdbc.queryForObject("select title from rag_document_versions", String.class)).isEqualTo("Existing");
         } finally {
@@ -162,7 +171,8 @@ class AdminRagDocumentIntegrationTest {
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken("43", "", List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
             assertThatThrownBy(() -> create("Rejected", "content"))
-                    .hasRootCauseInstanceOf(java.sql.SQLException.class);
+                    .rootCause().isInstanceOfSatisfying(SQLException.class,
+                            cause -> assertThat(cause.getSQLState()).isEqualTo("23514"));
             assertCounts(1);
             assertThat(jdbc.queryForObject("select title from rag_document_versions", String.class)).isEqualTo("Existing");
         } finally {
@@ -200,15 +210,30 @@ class AdminRagDocumentIntegrationTest {
     @EnableMethodSecurity
     @Import({RagDocumentService.class, AdminRagDocumentController.class})
     static class Config {
-        @Bean DataSource dataSource() {
-            return new DriverManagerDataSource("jdbc:h2:mem:rag_api;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
+        @Bean(destroyMethod = "close")
+        IsolatedPostgresDataSource dataSource(Environment environment) throws SQLException {
+            String url = environment.getRequiredProperty("test.datasource.url");
+            if (!url.startsWith("jdbc:postgresql:")) {
+                throw new IllegalArgumentException("test.datasource.url은 PostgreSQL JDBC 주소여야 합니다.");
+            }
+            var source = new DriverManagerDataSource(url,
+                    environment.getRequiredProperty("test.datasource.username"),
+                    environment.getRequiredProperty("test.datasource.password"));
+            var properties = new Properties();
+            properties.setProperty("connectTimeout", "5");
+            properties.setProperty("socketTimeout", "15");
+            source.setConnectionProperties(properties);
+            return new IsolatedPostgresDataSource(source);
         }
-        @Bean LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+        @Bean LocalContainerEntityManagerFactoryBean entityManagerFactory(IsolatedPostgresDataSource dataSource) {
             var factory = new LocalContainerEntityManagerFactoryBean();
             factory.setDataSource(dataSource);
             factory.setPackagesToScan("com.tikit.rag.entity");
             factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-            factory.setJpaPropertyMap(Map.of("hibernate.hbm2ddl.auto", "create-drop"));
+            factory.setJpaPropertyMap(Map.of(
+                    "hibernate.hbm2ddl.auto", "create-drop",
+                    "hibernate.default_schema", dataSource.getSchema(),
+                    "hibernate.hbm2ddl.halt_on_error", "true"));
             return factory;
         }
         @Bean JpaTransactionManager transactionManager(jakarta.persistence.EntityManagerFactory factory) {
