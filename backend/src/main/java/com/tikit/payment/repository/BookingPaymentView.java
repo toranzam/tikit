@@ -9,7 +9,7 @@ public interface BookingPaymentView {
 
     String getStatus();
 
-    OffsetDateTime getExpiredAt();
+    OffsetDateTime getExpiresAt();
 
     Long getTotalAmount();
 

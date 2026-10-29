@@ -1,10 +1,12 @@
 package com.tikit.payment.repository;
 
 import com.tikit.payment.entity.PaymentAttempt;
+import com.tikit.payment.entity.PaymentAttemptStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface PaymentAttemptRepository extends JpaRepository<PaymentAttempt, Long> {
@@ -55,5 +57,9 @@ public interface PaymentAttemptRepository extends JpaRepository<PaymentAttempt, 
             @Param("memberId") Long memberId
     );
 
+    // 같은 예매에 해당 상태의 결제 시도가 있는지 확인 (진행 중 결제 확인용)
+    boolean existsByBookingIdAndStatusIn(Long bookingId, Collection<PaymentAttemptStatus> statuses);
 
+    // 같은 예매의 해당 상태 결제 시도 조회 (READY 재사용용)
+    Optional<PaymentAttempt> findFirstByBookingIdAndStatus(Long bookingId, PaymentAttemptStatus status);
 }
