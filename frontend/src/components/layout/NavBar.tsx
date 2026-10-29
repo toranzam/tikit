@@ -13,7 +13,7 @@ export default function NavBar() {
         <Link to="/" aria-label="TIKIT 홈" className="flex h-10 items-center text-[32px] leading-[normal] font-semibold">TIKIT</Link>
         <div className="flex h-10 w-[400px] max-w-full items-center justify-between gap-4 max-sm:w-full">
           <div role="search" className="flex h-10 w-[280px] min-w-0 items-center gap-3 rounded-full border border-[#edededd9] px-3 max-sm:flex-1">
-            <input type="search" aria-label="공연 검색" placeholder="최현우 30주년 기념 마술쇼" className="h-full min-w-0 flex-1 bg-transparent text-sm leading-[normal] placeholder:text-[#8e8e8e]" />
+            <input type="search" aria-label="공연 검색" placeholder="최현우 30주년 기념 마술쇼" className="h-full min-w-0 flex-1 bg-transparent text-sm leading-[normal] placeholder:text-[#8e8e8e] focus:outline-none!" />
             <button type="button" aria-label="검색" className="flex shrink-0 items-center justify-center"><img src={searchIcon} alt="" /></button>
           </div>
           <div className="flex h-full shrink-0 items-center gap-3 px-1">
