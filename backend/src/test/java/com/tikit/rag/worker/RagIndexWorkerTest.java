@@ -67,6 +67,6 @@ class RagIndexWorkerTest {
     }
 
     private RagIndexTask task(Long id) {
-        return new RagIndexTask(id, id, 1, "정책 본문", "text-embedding-3-small", 1536);
+        return new RagIndexTask(id, id, 1, "정책 본문", "Qwen/Qwen3-Embedding-8B", 4096);
     }
 }

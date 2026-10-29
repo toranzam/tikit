@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({RagEmbeddingProperties.class, RagIndexingProperties.class})
+@EnableConfigurationProperties({RagEmbeddingProperties.class, RagIndexingProperties.class,
+        RagChunkingProperties.class, RagOllamaProperties.class})
 public class RagConfiguration {
 }

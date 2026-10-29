@@ -9,9 +9,9 @@ import org.springframework.validation.annotation.Validated;
 public record RagEmbeddingProperties(String model, int dimensions, String apiKey) {
 
     // 모델을 변경할 때는 저장된 벡터의 재인덱싱과 DB 마이그레이션도 필요하다.
-    @AssertTrue(message = "임베딩은 text-embedding-3-small 모델과 1536차원으로 설정해야 합니다.")
+    @AssertTrue(message = "임베딩은 Qwen/Qwen3-Embedding-8B 모델과 4096차원으로 설정해야 합니다.")
     public boolean isSupportedConfiguration() {
-        return "text-embedding-3-small".equals(model) && dimensions == 1536;
+        return "Qwen/Qwen3-Embedding-8B".equals(model) && dimensions == 4096;
     }
 
     @Override

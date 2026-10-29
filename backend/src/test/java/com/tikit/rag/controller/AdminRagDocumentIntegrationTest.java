@@ -3,15 +3,14 @@ package com.tikit.rag.controller;
 import com.tikit.rag.controller.advice.RagControllerAdvice;
 import com.tikit.rag.repository.*;
 import com.tikit.rag.service.RagDocumentService;
+import com.tikit.rag.support.PostgresRagTestConfiguration;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.*;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,9 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import javax.sql.DataSource;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -32,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Real JPA transactions; deliberately no test-level transaction that could hide commit/rollback bugs. */
 @SpringJUnitConfig(AdminRagDocumentIntegrationTest.Config.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AdminRagDocumentIntegrationTest {
     private static final String URL = "/api/v1/admin/rag/documents";
     @Autowired AdminRagDocumentController controller;
@@ -198,22 +196,7 @@ class AdminRagDocumentIntegrationTest {
     @EnableJpaAuditing
     @EnableTransactionManagement
     @EnableMethodSecurity
-    @Import({RagDocumentService.class, AdminRagDocumentController.class})
+    @Import({RagDocumentService.class, AdminRagDocumentController.class, PostgresRagTestConfiguration.class})
     static class Config {
-        @Bean DataSource dataSource() {
-            return new DriverManagerDataSource("jdbc:h2:mem:rag_api;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
-        }
-        @Bean LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
-            var factory = new LocalContainerEntityManagerFactoryBean();
-            factory.setDataSource(dataSource);
-            factory.setPackagesToScan("com.tikit.rag.entity");
-            factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-            factory.setJpaPropertyMap(Map.of("hibernate.hbm2ddl.auto", "create-drop"));
-            return factory;
-        }
-        @Bean JpaTransactionManager transactionManager(jakarta.persistence.EntityManagerFactory factory) {
-            return new JpaTransactionManager(factory);
-        }
-        @Bean JdbcTemplate jdbcTemplate(DataSource source) { return new JdbcTemplate(source); }
     }
 }

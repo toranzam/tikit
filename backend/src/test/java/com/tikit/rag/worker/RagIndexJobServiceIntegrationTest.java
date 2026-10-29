@@ -4,6 +4,7 @@ import com.tikit.rag.config.RagEmbeddingProperties;
 import com.tikit.rag.config.RagIndexingProperties;
 import com.tikit.rag.entity.*;
 import com.tikit.rag.repository.*;
+import com.tikit.rag.support.PostgresRagTestConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,17 +14,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import javax.sql.DataSource;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,18 +29,28 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringJUnitConfig(RagIndexJobServiceIntegrationTest.Config.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class RagIndexJobServiceIntegrationTest {
     @Autowired RagIndexJobService service;
     @Autowired RagIndexJobRepository jobs;
     @Autowired RagDocumentRepository documents;
     @Autowired RagDocumentVersionRepository versions;
     @Autowired JpaTransactionManager transactionManager;
+    @Autowired JdbcTemplate jdbc;
 
     @BeforeEach
     void clearData() {
         jobs.deleteAll();
         versions.deleteAll();
         documents.deleteAll();
+    }
+
+    @Test
+    @DisplayName("실제 PostgreSQL에 연결하며 기존 public 스키마를 사용하지 않는다")
+    void usesPostgresInAnIsolatedSchema() {
+        assertThat(jdbc.queryForObject("select version()", String.class)).startsWith("PostgreSQL ");
+        assertThat(jdbc.queryForObject("select current_schema()", String.class)).startsWith("rag_test_");
+        assertThat(jdbc.queryForObject("show search_path", String.class)).matches("rag_test_[0-9a-f]{32}");
     }
 
     @Test
@@ -67,10 +75,10 @@ class RagIndexJobServiceIntegrationTest {
         assertThat(job.getAttemptCount()).isEqualTo(1);
         assertThat(job.getLeaseOwner()).isEqualTo("worker");
         assertThat(version.getIndexStatus()).isEqualTo(RagIndexStatus.RUNNING);
-        assertThat(version.getEmbeddingModel()).isEqualTo("text-embedding-3-small");
-        assertThat(version.getEmbeddingDimensions()).isEqualTo(1536);
+        assertThat(version.getEmbeddingModel()).isEqualTo("Qwen/Qwen3-Embedding-8B");
+        assertThat(version.getEmbeddingDimensions()).isEqualTo(4096);
         assertThat(task.content()).isEqualTo("정책 본문");
-        assertThat(task.embeddingDimensions()).isEqualTo(1536);
+        assertThat(task.embeddingDimensions()).isEqualTo(4096);
         assertThat(documents.findById(task.documentId()).orElseThrow().getActiveVersion()).isNull();
     }
 
@@ -112,7 +120,7 @@ class RagIndexJobServiceIntegrationTest {
         var job = jobs.findById(id).orElseThrow();
         new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                 versions.findById(new RagDocumentVersionId(job.getDocumentId(), 1)).orElseThrow()
-                        .startIndexing("text-embedding-3-small", 1536));
+                        .startIndexing("Qwen/Qwen3-Embedding-8B", 4096));
         assertThatThrownBy(() -> service.claim(id, "worker")).isInstanceOf(IllegalStateException.class);
         var unchanged = jobs.findById(id).orElseThrow();
         assertThat(unchanged.getStatus()).isEqualTo(RagIndexJobStatus.QUEUED);
@@ -156,24 +164,10 @@ class RagIndexJobServiceIntegrationTest {
     @EnableJpaRepositories(basePackageClasses = RagIndexJobRepository.class)
     @EnableJpaAuditing
     @EnableTransactionManagement
-    @Import(RagIndexJobService.class)
+    @Import({RagIndexJobService.class, PostgresRagTestConfiguration.class})
     static class Config {
         @Bean RagEmbeddingProperties embedding() {
-            return new RagEmbeddingProperties("text-embedding-3-small", 1536, "");
-        }
-        @Bean DataSource dataSource() {
-            return new DriverManagerDataSource("jdbc:h2:mem:rag_worker;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
-        }
-        @Bean LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
-            var factory = new LocalContainerEntityManagerFactoryBean();
-            factory.setDataSource(dataSource);
-            factory.setPackagesToScan("com.tikit.rag.entity");
-            factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-            factory.setJpaPropertyMap(Map.of("hibernate.hbm2ddl.auto", "create-drop"));
-            return factory;
-        }
-        @Bean JpaTransactionManager transactionManager(jakarta.persistence.EntityManagerFactory factory) {
-            return new JpaTransactionManager(factory);
+            return new RagEmbeddingProperties("Qwen/Qwen3-Embedding-8B", 4096, "");
         }
     }
 }
