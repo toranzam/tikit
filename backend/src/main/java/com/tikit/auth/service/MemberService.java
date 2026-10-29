@@ -7,6 +7,7 @@ import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
 import com.tikit.auth.exception.AccountRestrictedException;
+import com.tikit.auth.exception.DuplicateEmailException;
 import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.exception.RefreshTokenException;
 import com.tikit.auth.redis.RefreshTokenRepository;
@@ -18,6 +19,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +27,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -40,6 +44,12 @@ public class MemberService {
     @Transactional
     public void signupMember(MemberRegisterRequestDTO dto) {
 
+        // 저장 형식과 같게 정규화한 이메일로 중복 확인
+        String email = dto.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (accountRepository.existsByEmail(email)) {
+            throw new DuplicateEmailException("이미 가입된 이메일입니다.");
+        }
+
         String encodedPw = passwordEncoder.encode(dto.getPassword());
 
         Member member = Member.create(
@@ -49,7 +59,13 @@ public class MemberService {
                 Role.MEMBER
         );
 
-        Member saved = accountRepository.save(member);
+        Member saved;
+        try {
+            // 동시 가입 요청은 DB 유니크 제약으로 한 번 더 차단
+            saved = accountRepository.saveAndFlush(member);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateEmailException("이미 가입된 이메일입니다.");
+        }
 
         log.info("registered user: {}", saved.getId());
 
