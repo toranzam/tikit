@@ -3,7 +3,7 @@ package com.tikit.seller.service;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import com.tikit.common.ErrorCode;
 import com.tikit.seller.dto.SellerApplicationRequestDTO;
 import com.tikit.seller.dto.SellerApplicationResponseDTO;
@@ -37,7 +37,7 @@ class SellerApplicationServiceTest {
     private SellerApplicationRepository sellerApplicationRepository;
 
     @Mock
-    private AccountRepository accountRepository;
+    private MemberRepository memberRepository;
 
     @InjectMocks
     private SellerApplicationService service;
@@ -75,7 +75,7 @@ class SellerApplicationServiceTest {
     void apply_success() {
         // given
         Member member = member(MemberStatus.ACTIVE, Role.MEMBER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(sellerApplicationRepository.hasStatus(1L, SellerApplicationStatus.PENDING))
                 .thenReturn(false);
         when(sellerApplicationRepository.save(any(SellerApplication.class)))
@@ -98,7 +98,7 @@ class SellerApplicationServiceTest {
     @Test
     @DisplayName("회원이 존재하지 않으면 RESOURCE_NOT_FOUND")
     void apply_memberNotFound() {
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(memberRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertApplyFails(99L, ErrorCode.RESOURCE_NOT_FOUND);
 
@@ -109,19 +109,9 @@ class SellerApplicationServiceTest {
     @DisplayName("제한된 계정은 신청할 수 없다 (ACCOUNT_RESTRICTED)")
     void apply_restrictedAccount() {
         Member member = member(MemberStatus.SUSPENDED, Role.MEMBER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         assertApplyFails(1L, ErrorCode.ACCOUNT_RESTRICTED);
-        verify(sellerApplicationRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("이미 판매자인 회원은 신청할 수 없다 (SELLER_APPLICATION_EXISTS)")
-    void apply_alreadySeller() {
-        Member member = member(MemberStatus.ACTIVE, Role.SELLER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
-
-        assertApplyFails(1L, ErrorCode.SELLER_APPLICATION_EXISTS);
         verify(sellerApplicationRepository, never()).save(any());
     }
 
@@ -129,7 +119,7 @@ class SellerApplicationServiceTest {
     @DisplayName("일반 회원이 아니면 신청할 수 없다 (ACCESS_DENIED)")
     void apply_notMemberRole() {
         Member member = member(MemberStatus.ACTIVE, Role.ADMIN);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         assertApplyFails(1L, ErrorCode.ACCESS_DENIED);
         verify(sellerApplicationRepository, never()).save(any());
@@ -139,7 +129,7 @@ class SellerApplicationServiceTest {
     @DisplayName("이미 PENDING 신청이 있으면 중복 신청으로 거부된다")
     void apply_duplicatePending() {
         Member member = member(MemberStatus.ACTIVE, Role.MEMBER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(sellerApplicationRepository.hasStatus(1L, SellerApplicationStatus.PENDING))
                 .thenReturn(true);
 

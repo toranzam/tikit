@@ -3,7 +3,7 @@ package com.tikit.seller.service;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import com.tikit.common.ErrorCode;
 import com.tikit.seller.dto.SellerApplicationRequestDTO;
 import com.tikit.seller.dto.SellerApplicationResponseDTO;
@@ -20,24 +20,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerApplicationService {
 
     private final SellerApplicationRepository sellerApplicationRepository;
-    private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
 
     //판매자 등록 신청
     @Transactional
     public SellerApplicationResponseDTO apply(Long memberId, SellerApplicationRequestDTO dto){
 
         //로그인한 회원조회 ("요청한 리소스를 찾을 수 없거나 접근할 수 없습니다.")
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(()->new SellerException(ErrorCode.RESOURCE_NOT_FOUND));
 
         //"이용이 제한된 계정입니다."
         if(member.getStatus() != MemberStatus.ACTIVE){
             throw new SellerException(ErrorCode.ACCOUNT_RESTRICTED);
-        }
-
-        //현재 판매자일 경우("진행 중인 판매자 신청이 있거나 이미 승인된 판매자입니다.")
-        if(member.getRole() == Role.SELLER){
-            throw new SellerException(ErrorCode.SELLER_APPLICATION_EXISTS);
         }
 
         //일반회원만 신청가능("접근 권한이 없거나 현재 상태에서는 접근할 수 없습니다.")
