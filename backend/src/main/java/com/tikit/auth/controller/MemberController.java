@@ -7,6 +7,7 @@ import com.tikit.auth.dto.request.MemberLoginRequestDTO;
 import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
 import com.tikit.auth.service.MemberService;
 import com.tikit.common.dto.ResponseDTO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -42,7 +43,7 @@ public class MemberController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<ResponseDTO<Void>> signup(@RequestBody MemberRegisterRequestDTO dto) {
+    public ResponseEntity<ResponseDTO<Void>> signup(@Valid @RequestBody MemberRegisterRequestDTO dto) {
         memberService.signupMember(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)

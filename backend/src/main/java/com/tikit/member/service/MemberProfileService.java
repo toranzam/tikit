@@ -1,7 +1,7 @@
 package com.tikit.member.service;
 
 import com.tikit.auth.entity.Member;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import com.tikit.member.dto.MemberProfileResponseDTO;
 import com.tikit.member.dto.MemberProfileUpdateRequestDTO;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MemberProfileService {
 
-    private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
     public MemberProfileResponseDTO getMyProfile(Long memberId) {
 
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
 
                 // 해당 회원이 존재하지 않으면 예외 발생
                 .orElseThrow(() ->
@@ -36,7 +36,7 @@ public class MemberProfileService {
     ) {
 
         // 회원 ID로 DB에서 회원 조회
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
 
                 // 해당 회원이 존재하지 않으면 예외 발생
                 .orElseThrow(() ->
