@@ -2,6 +2,7 @@ package com.tikit.payment.controller.advice;
 
 import com.tikit.common.ErrorCode;
 import com.tikit.common.dto.ResponseDTO;
+import com.tikit.payment.exception.PaymentNotFoundException;
 import com.tikit.payment.exception.TossApiException;
 import com.tikit.payment.exception.TossResultUnknownException;
 import com.tikit.payment.exception.TossUnavailableException;
@@ -45,6 +46,19 @@ public class PaymentControllerAdvice {
         log.error("toss result unknown: {}", e.getMessage());
 
         ErrorCode errorCode = ErrorCode.PAYMENT_IN_PROGRESS;
+
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ResponseDTO.fail(
+                        errorCode
+                ));
+    }
+
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ResponseDTO<Void>> handlePaymentNotFoundException(PaymentNotFoundException e) {
+        log.error("payment not found: {}", e.getMessage());
+
+        ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
 
         return ResponseEntity
                 .status(errorCode.getStatus())

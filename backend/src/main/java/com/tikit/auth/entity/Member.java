@@ -73,4 +73,9 @@ public class Member {
         return member;
     }
 
+    // 회원 이름 변경
+    public void changeName(String newName){
+        this.name = newName;
+    }
+
 }
