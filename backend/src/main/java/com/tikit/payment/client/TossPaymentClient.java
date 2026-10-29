@@ -1,5 +1,6 @@
 package com.tikit.payment.client;
 
+import com.tikit.payment.dto.toss.TossConfirmRequestDTO;
 import com.tikit.payment.dto.toss.TossErrorResponseDTO;
 import com.tikit.payment.dto.toss.TossPaymentResponseDTO;
 import com.tikit.payment.exception.TossApiException;
@@ -8,6 +9,7 @@ import com.tikit.payment.exception.TossUnavailableException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -79,5 +81,17 @@ public class TossPaymentClient {
         return cause instanceof SocketTimeoutException
                 && cause.getMessage() != null
                 && cause.getMessage().toLowerCase().contains("connect");
+    }
+
+    // 결제 승인 요청 (같은 멱등키로 다시 보내면 Toss가 첫 승인 결과를 그대로 반환)
+    public TossPaymentResponseDTO confirmPayment(TossConfirmRequestDTO request, String idempotencyKey) {
+        return execute(() -> tossRestClient.post()
+                .uri("v1/payments/confirm")
+                .header("Idempotency-Key", idempotencyKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, this::throwTossApiException)
+                .body(TossPaymentResponseDTO.class));
     }
 }
