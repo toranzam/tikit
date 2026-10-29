@@ -1,0 +1,38 @@
+package com.tikit.payment.repository;
+
+import com.tikit.payment.entity.PaymentAttempt;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+
+public interface PaymentAttemptRepository extends JpaRepository<PaymentAttempt, Long> {
+
+    Optional<PaymentAttempt> findByOrderId(String orderId);
+
+    // 회원 본인의 결제 시도를 예매·회원 정보와 함께 조회(Booking 엔티티가 없어서 네이티브 쿼리 사용)
+    @Query(value = """
+            SELECT pa.id                          AS "paymentAttemptId",
+                   pa.booking_id                  AS "bookingId",
+                   pa.order_id                    AS "orderId",
+                   m.customer_key                 AS "customerKey",
+                   pa.amount                      AS "amount",
+                   pa.currency                    AS "currency",
+                   pa.status                      AS "status",
+                   pa.failure_code                AS "failureCode",
+                   b.status                       AS "bookingStatus",
+                   b.expires_at                   AS "expiresAt",
+                   b.performance_title_snapshot   AS "performanceTitle",
+                   b.seat_count::int              AS "seatCount"
+            FROM payment_attempts pa
+            JOIN bookings b ON b.id = pa.booking_id
+            JOIN members m ON m.id = b.member_id
+            WHERE pa.id = :paymentAttemptId
+              AND b.member_id = :memberId
+            """, nativeQuery = true)
+    Optional<PaymentAttemptDetailView> findDetailByIdAndMemberId(
+            @Param("paymentAttemptId") Long paymentAttemptId,
+            @Param("memberId") Long memberId
+    );
+}
