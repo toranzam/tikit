@@ -1,12 +1,13 @@
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import searchIcon from '../../assets/navigation/search.svg'
 import heartIcon from '../../assets/navigation/heart.svg'
-import myPageIcon from '../../assets/navigation/my-page.svg'
 import shoppingBagIcon from '../../assets/navigation/shopping-bag.svg'
+import AccountPopover from './AccountPopover'
 
 const genres = ['연극', '무용', '대중무용', '클래식', '국악', '대중음악', '복합', '서커스/마술', '뮤지컬']
 
 export default function NavBar() {
+  const location = useLocation()
   return (
     <header className="w-full bg-white">
       <div className="mx-auto flex min-h-16 max-w-[1320px] flex-wrap items-center justify-between gap-y-4 pl-5 pt-6 max-sm:pr-5">
@@ -18,7 +19,7 @@ export default function NavBar() {
           </div>
           <div className="flex h-full shrink-0 items-center gap-3 px-1">
             <button type="button" aria-label="관심 공연" className="flex h-6 w-[18.236px] items-center justify-center"><img src={heartIcon} alt="" className="max-w-none shrink-0" /></button>
-            <Link to="/login" aria-label="마이페이지 로그인" className="flex items-center justify-center"><img src={myPageIcon} alt="" /></Link>
+            <AccountPopover key={location.key} />
             <button type="button" aria-label="예매 내역" className="flex items-center justify-center"><img src={shoppingBagIcon} alt="" /></button>
           </div>
         </div>
