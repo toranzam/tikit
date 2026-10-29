@@ -65,8 +65,11 @@ export default function AccountPopover() {
   }
 
   function handleAccountPage() {
-    if (!hasSession) {
-      setIsOpen(false)
+    setIsOpen(false)
+
+    if (hasSession) {
+      navigate('/mypage')
+    } else {
       navigate('/login')
     }
   }
@@ -134,7 +137,7 @@ export default function AccountPopover() {
                 <img src={walletIcon} alt="" className="max-w-none shrink-0" />
                 주문
               </button>
-              <button type="button" onClick={handleAccountPage} disabled={hasSession} title="프로필" className="flex items-center gap-1 whitespace-nowrap">
+              <button type="button" onClick={handleAccountPage} title="프로필" className="flex items-center gap-1 whitespace-nowrap">
                 <img src={profileIcon} alt="" className="max-w-none shrink-0" />
                 프로필
               </button>
