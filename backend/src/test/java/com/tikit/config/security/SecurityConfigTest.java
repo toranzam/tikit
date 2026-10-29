@@ -3,7 +3,7 @@ package com.tikit.config.security;
 import com.tikit.auth.dto.request.MemberLoginRequestDTO;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.Role;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ public class SecurityConfigTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private AccountRepository accountRepository;
+    private MemberRepository memberRepository;
 
 
     @Test
@@ -71,10 +71,10 @@ public class SecurityConfigTest {
         );
 
         // 저장 후
-        accountRepository.save(member);
+        memberRepository.save(member);
 
         // 바로 insert
-        accountRepository.flush();
+        memberRepository.flush();
 
         MemberLoginRequestDTO dto = new MemberLoginRequestDTO(
                 "test1234567error@gmail.com",
@@ -115,10 +115,10 @@ public class SecurityConfigTest {
         );
 
         // 저장 후
-        accountRepository.save(member);
+        memberRepository.save(member);
 
         // 바로 insert
-        accountRepository.flush();
+        memberRepository.flush();
 
         MemberLoginRequestDTO dto = new MemberLoginRequestDTO(
                 "test12345@gmail.com",

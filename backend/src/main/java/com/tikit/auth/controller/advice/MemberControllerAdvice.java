@@ -1,5 +1,7 @@
 package com.tikit.auth.controller.advice;
 
+import com.tikit.auth.exception.AccountRestrictedException;
+import com.tikit.auth.exception.DuplicateEmailException;
 import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.cookie.RefreshTokenCookie;
 import com.tikit.auth.exception.RefreshTokenException;
@@ -27,6 +29,34 @@ public class MemberControllerAdvice {
 
         return ResponseEntity
                 .status(errorCode.getStatus())
+                .body(ResponseDTO.fail(
+                        errorCode
+                ));
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleDuplicateEmailException(DuplicateEmailException e) {
+        log.warn("signup failed: {}", e.getMessage());
+
+        ErrorCode errorCode = ErrorCode.EMAIL_ALREADY_EXISTS;
+
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ResponseDTO.fail(
+                        errorCode
+                ));
+    }
+
+    @ExceptionHandler(AccountRestrictedException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleAccountRestrictedException(AccountRestrictedException e) {
+        log.warn("account restricted: {}", e.getMessage());
+
+        ErrorCode errorCode = ErrorCode.ACCOUNT_RESTRICTED;
+
+        // 재발급 요청에서 남은 리프레시 토큰 쿠키도 함께 삭제
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear().toString())
                 .body(ResponseDTO.fail(
                         errorCode
                 ));
