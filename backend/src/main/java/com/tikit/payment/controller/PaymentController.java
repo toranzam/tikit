@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/v1/payment-attempts")
+@RequestMapping("/api/v1/payment-attempts")
 @Slf4j
 @RequiredArgsConstructor
 public class PaymentController {
