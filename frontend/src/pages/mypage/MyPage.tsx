@@ -1,6 +1,8 @@
 import { Link } from 'react-router'
 import { useEffect, useState } from 'react'
 import { getMyProfile, type MemberProfile } from '../../api/memberApi'
+import axios from 'axios'
+
 
 // 사이드바 메뉴
 const bookingMenus = [
@@ -31,19 +33,52 @@ const favorites = [
 // 마이페이지 메인 화면
 export default function MyPage() {
     const [profile, setProfile] = useState<MemberProfile | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState('')
+    const [isAuthError, setIsAuthError] = useState(false)
 
     // 회원정보 조회
     useEffect(() => {
-        const loadProfile = async () => {
+        let active = true
+
+        async function loadProfile() {
             try {
                 const profileData = await getMyProfile()
+
+                if (!active) return
+
                 setProfile(profileData)
+                setError('')
+                setIsAuthError(false)
             } catch (error) {
-                console.error('회원정보 조회 실패: ', error)
+                if (!active) return
+
+                // 인증 오류 여부 확인
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.status === 401) {
+                        setError('로그인 시간이 만료되었거나 인증이 유효하지 않습니다.')
+                        setIsAuthError(true)
+                    } else if (error.response && error.response.status >= 500) {
+                        setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
+                    } else if (!error.response) {
+                        setError('서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.')
+                    } else {
+                        setError('회원정보를 불러오지 못했습니다.')
+                    }
+                } else {
+                    setError('회원정보를 불러오지 못했습니다.')
+                }
+            } finally {
+                if (active) setIsLoading(false)
             }
         }
 
         void loadProfile()
+
+        return () => {
+            active = false
+        }
+
     }, [])
 
     return (
@@ -106,12 +141,39 @@ export default function MyPage() {
                 <div className="min-w-0 flex-1">
                     <section className="flex flex-col justify-between gap-6 rounded-md border border-[#ddd] bg-[#fafafa] p-7 sm:flex-row sm:items-center">
                         <div>
-                            <h2 className="text-[22px] font-semibold">
-                                {profile ? `${profile.name}님` : '회원정보 불러오는 중...'}
-                            </h2>
-                            <p className="mt-2 text-[14px] text-[#777]">
-                                {profile?.email ?? ''}
-                            </p>
+                            {isLoading ? (
+                                <p className="text-[14px] text-[#777]">
+                                    회원정보를 불러오는 중...
+                                </p>
+                            ) : error ? (
+                                <div>
+                                    <p role="alert" className="text-[14px] text-red-600">
+                                        {error}
+                                    </p>
+
+                                    {isAuthError && (
+                                        <Link
+                                            to="/login"
+                                            className="mt-3 inline-block rounded bg-[#333] px-4 py-2 text-[14px] text-white"
+                                        >
+                                            다시 로그인
+                                        </Link>
+                                    )}
+                                </div>
+                            ) : profile ? (
+                                <>
+                                    <h2 className="text-[22px] font-semibold">
+                                        {profile.name}님
+                                    </h2>
+                                    <p className="mt-2 text-[14px] text-[#777]">
+                                        {profile.email}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-[14px] text-[#777]">
+                                    회원정보를 표시할 수 없습니다.
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex gap-10">

@@ -5,6 +5,7 @@ import {
     updateMyProfile,
     type MemberProfile,
 } from '../../api/memberApi'
+import axios from 'axios'
 
 
 // 가입일 표시 형식 : YYYY-MM-DD
@@ -14,6 +15,25 @@ function formatDate(value: string) {
         month: '2-digit',
         day: '2-digit',
     }).replace(/\. /g, '-').replace('.', '')
+}
+
+// 안내 메시지 반환 - API 오류
+function getProfileErrorMessage(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+            return '로그인 시간이 만료되었거나 인증이 유효하지 않습니다. 다시 로그인해 주세요.'
+        }
+
+        if (error.response && error.response.status >= 500) {
+            return '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
+        }
+
+        if (!error.response) {
+            return '서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.'
+        }
+    }
+
+    return '요청을 처리하지 못했습니다. 다시 시도해 주세요.'
 }
 
 export default function MemberProfilePage() {
@@ -26,6 +46,7 @@ export default function MemberProfilePage() {
     const [isSaving, setIsSaving] = useState(false)
     const [message, setMessage] = useState('')
     const [error, setError] = useState('')
+    const [isAuthError, setIsAuthError] = useState(false)
 
     useEffect(() => {
         let active = true
@@ -38,8 +59,13 @@ export default function MemberProfilePage() {
 
                 setProfile(data)
                 setName(data.name)
-            } catch {
-                if (active) setError('회원정보를 불러오지 못했습니다.')
+            } catch (error) {
+                if (active) {
+                    setError(getProfileErrorMessage(error))
+                    setIsAuthError(
+                        axios.isAxiosError(error) && error.response?.status === 401
+                    )
+                }
             } finally {
                 if (active) setIsLoading(false)
             }
@@ -90,8 +116,9 @@ export default function MemberProfilePage() {
             setName(updated.name)
             setIsEditing(false)
             setMessage('회원정보가 수정되었습니다.')
-        } catch {
-            setError('회원정보 수정에 실패했습니다. 다시 시도해 주세요.')
+        } catch (error) {
+            // 회원정보 수정을 실패한 경우
+            setError(getProfileErrorMessage(error))
         } finally {
             setIsSaving(false)
         }
@@ -233,9 +260,24 @@ export default function MemberProfilePage() {
                             <p role="alert" className="text-[14px] text-red-600">
                                 {error || '회원정보를 표시할 수 없습니다.'}
                             </p>
-                            <Link to="/mypage" className="mt-4 inline-block text-[14px] underline">
-                                마이페이지로 돌아가기
-                            </Link>
+
+                            <div className="mt-5 flex gap-4">
+                                {isAuthError && (
+                                    <Link
+                                        to="/login"
+                                        className="rounded bg-[#333] px-5 py-3 text-[14px] text-white"
+                                    >
+                                        다시 로그인
+                                    </Link>
+                                )}
+
+                                <Link
+                                    to="/mypage"
+                                    className="rounded border border-[#ccc] px-5 py-3 text-[14px]"
+                                >
+                                    마이페이지로 돌아가기
+                                </Link>
+                            </div>
                         </div>
                     )}
                 </section>
