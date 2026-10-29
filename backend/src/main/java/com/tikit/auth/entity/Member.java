@@ -78,4 +78,9 @@ public class Member {
         this.name = newName;
     }
 
+    // 전체 알림 수신 설정 변경
+    public void changeNotificationEnabled(boolean enabled) {
+        this.notificationEnabled = enabled;
+    }
+
 }
