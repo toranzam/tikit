@@ -1,24 +1,16 @@
 import {apiClient} from "./apiClient.ts";
+import {AUTH_API_PREFIX, authClient} from "./authSession";
+import type {TokenResponse} from "./authSession";
+import {useAuthStore} from "../stores/authStore";
 
 interface LoginRequest {
     email: string
     password: string
 }
 
-interface LoginResponse {
-    code: string
-    message: string
-    data: {
-        accessToken: string
-        refreshToken: string
-    }
-}
-
-const API_PREFIX = '/api/v1/auth'
-
 export async function login(request: LoginRequest) {
-    const response = await apiClient.post<LoginResponse>(
-        `${API_PREFIX}/login`,
+    const response = await authClient.post<TokenResponse>(
+        `${AUTH_API_PREFIX}/login`,
         request
     )
 
@@ -38,11 +30,16 @@ interface SignupResponse {
 }
 
 export async function signup(request: SignupRequest) {
-    const response = await apiClient.post<SignupResponse>(
-        `${API_PREFIX}/signup`,
+    const response = await authClient.post<SignupResponse>(
+        `${AUTH_API_PREFIX}/signup`,
         request
     );
 
     return response.data;
+}
+
+export async function logout() {
+    await apiClient.post(`${AUTH_API_PREFIX}/logout`, {});
+    useAuthStore.getState().clearTokens();
 }
 
