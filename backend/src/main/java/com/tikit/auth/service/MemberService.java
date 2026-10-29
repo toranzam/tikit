@@ -11,7 +11,7 @@ import com.tikit.auth.exception.DuplicateEmailException;
 import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.exception.RefreshTokenException;
 import com.tikit.auth.redis.RefreshTokenRepository;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import com.tikit.config.security.CustomUserDetails;
 import com.tikit.util.JWTProvider;
 import io.jsonwebtoken.Claims;
@@ -35,7 +35,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JWTProvider jwtProvider;
@@ -46,7 +46,7 @@ public class MemberService {
 
         // 저장 형식과 같게 정규화한 이메일로 중복 확인
         String email = dto.getEmail().trim().toLowerCase(Locale.ROOT);
-        if (accountRepository.existsByEmail(email)) {
+        if (memberRepository.existsByEmail(email)) {
             throw new DuplicateEmailException("이미 가입된 이메일입니다.");
         }
 
@@ -62,7 +62,7 @@ public class MemberService {
         Member saved;
         try {
             // 동시 가입 요청은 DB 유니크 제약으로 한 번 더 차단
-            saved = accountRepository.saveAndFlush(member);
+            saved = memberRepository.saveAndFlush(member);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateEmailException("이미 가입된 이메일입니다.");
         }
@@ -122,7 +122,7 @@ public class MemberService {
 
         String accountId = claims.getSubject();
 
-        Member member = accountRepository.findById(Long.valueOf(accountId))
+        Member member = memberRepository.findById(Long.valueOf(accountId))
                 .orElseThrow(() -> new RefreshTokenException("계정이 존재하지 않습니다."));
 
         // 로그인 이후 정지 또는 탈퇴된 계정은 세션 삭제 후 재발급 차단

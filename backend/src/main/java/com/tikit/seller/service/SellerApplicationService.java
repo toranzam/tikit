@@ -3,7 +3,7 @@ package com.tikit.seller.service;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 import com.tikit.common.ErrorCode;
 import com.tikit.seller.dto.SellerApplicationRequestDTO;
 import com.tikit.seller.dto.SellerApplicationResponseDTO;
@@ -20,14 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerApplicationService {
 
     private final SellerApplicationRepository sellerApplicationRepository;
-    private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
 
     //판매자 등록 신청
     @Transactional
     public SellerApplicationResponseDTO apply(Long memberId, SellerApplicationRequestDTO dto){
 
         //로그인한 회원조회 ("요청한 리소스를 찾을 수 없거나 접근할 수 없습니다.")
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(()->new SellerException(ErrorCode.RESOURCE_NOT_FOUND));
 
         //"이용이 제한된 계정입니다."
