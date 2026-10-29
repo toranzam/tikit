@@ -1,4 +1,6 @@
 import { Link } from 'react-router'
+import { useEffect, useState } from 'react'
+import { getMyProfile, type MemberProfile } from '../../api/memberApi'
 
 // 사이드바 메뉴
 const bookingMenus = [
@@ -8,7 +10,7 @@ const bookingMenus = [
 ]
 
 const accountMenus = [
-    '회원 정보 조회',
+    '내 정보 조회',
     '비밀번호 변경',
     '알림 설정',
     '로그아웃',
@@ -28,6 +30,22 @@ const favorites = [
 
 // 마이페이지 메인 화면
 export default function MyPage() {
+    const [profile, setProfile] = useState<MemberProfile | null>(null)
+
+    // 회원정보 조회
+    useEffect(() => {
+        const loadProfile = async () => {
+            try {
+                const profileData = await getMyProfile()
+                setProfile(profileData)
+            } catch (error) {
+                console.error('회원정보 조회 실패: ', error)
+            }
+        }
+
+        void loadProfile()
+    }, [])
+
     return (
         <div className="mx-auto w-full max-w-[1320px] px-5 py-10">
             <h1 className="border-b border-[#333] pb-5 text-[28px] font-semibold">
@@ -43,11 +61,12 @@ export default function MyPage() {
 
                         <nav className="flex flex-col gap-4">
                             {bookingMenus.map((menu) => (
+                                // TODO: 예매 내역(김민성님), 취소/환불 내역(최정환님), 관심 공연(김기현님) 이동할 수 있게 해야 함
                                 <span
                                     key={menu}
                                     className="text-[14px] text-[#555]"
                                 >
-                                  {menu}
+                                    {menu}
                                 </span>
                             ))}
                         </nav>
@@ -61,27 +80,37 @@ export default function MyPage() {
                         </h2>
 
                         <nav className="flex flex-col gap-4">
-                            {accountMenus.map((menu) => (
-                                <span
-                                    key={menu}
-                                    className="text-[14px] text-[#555]"
-                                >
-                  {menu}
-                </span>
-                            ))}
+                            {accountMenus.map((menu) =>
+                                    menu === '내 정보 조회' ? (
+                                        <Link
+                                            key={menu}
+                                            to="/mypage/profile"
+                                            className="text-[14px] text-[#555] hover:text-black"
+                                        >
+                                            {menu}
+                                        </Link>
+                                    ) : (
+                                        // TODO: 비번 변경, 알림 설정, 로그아웃 등 이동/작동할 수 있게 해야 함
+                                        <span
+                                            key={menu}
+                                            className="text-[14px] text-[#555]"
+                                        >
+                                            {menu}
+                                        </span>
+                                    )
+                            )}
                         </nav>
                     </div>
                 </aside>
 
                 <div className="min-w-0 flex-1">
-                    {/* TODO: GET /api/v1/me 연동 */}
                     <section className="flex flex-col justify-between gap-6 rounded-md border border-[#ddd] bg-[#fafafa] p-7 sm:flex-row sm:items-center">
                         <div>
                             <h2 className="text-[22px] font-semibold">
-                                김티킷님
+                                {profile ? `${profile.name}님` : '회원정보 불러오는 중...'}
                             </h2>
                             <p className="mt-2 text-[14px] text-[#777]">
-                                tikit@example.com
+                                {profile?.email ?? ''}
                             </p>
                         </div>
 
@@ -172,7 +201,7 @@ export default function MyPage() {
                                 to="/mypage/profile"
                                 className="flex items-center justify-between border-b border-[#ddd] px-5 py-6 text-[14px] sm:border-r sm:border-b-0"
                             >
-                                회원 정보 조회
+                                내 정보 조회
                                 <span>›</span>
                             </Link>
 

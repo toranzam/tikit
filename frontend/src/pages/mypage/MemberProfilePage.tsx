@@ -6,6 +6,7 @@ import {
     type MemberProfile,
 } from '../../api/memberApi'
 
+
 // 가입일 표시 형식 : YYYY-MM-DD
 function formatDate(value: string) {
     return new Date(value).toLocaleDateString('ko-KR', {
@@ -110,9 +111,10 @@ export default function MemberProfilePage() {
 
     return (
         <div className="mx-auto w-full max-w-[1320px] px-5 py-10">
-            {/* 페이지 제목 */}
             <h1 className="border-b border-[#333] pb-5 text-[28px] font-semibold">
-                마이페이지
+                <Link to="/mypage" className="cursor-pointer">
+                    마이페이지
+                </Link>
             </h1>
 
             <div className="mt-8 flex flex-col gap-10 md:flex-row">
@@ -131,7 +133,7 @@ export default function MemberProfilePage() {
                     <nav className="flex flex-col gap-4 text-[14px] text-[#555]">
                         <Link to="/mypage/profile"
                               className="rounded bg-[#eeeeee] px-2 py-2 text-[14px] text-[#111]">
-                            회원 정보 조회
+                            내 정보 조회
                         </Link>
                         <span>비밀번호 변경</span>
                         <span>알림 설정</span>
@@ -140,7 +142,7 @@ export default function MemberProfilePage() {
                 </aside>
 
                 <section className="min-w-0 flex-1">
-                    <h2 className="mb-6 text-[22px] font-semibold">회원 정보 조회</h2>
+                    <h2 className="mb-6 text-[22px] font-semibold">내 정보 조회</h2>
 
                     {isLoading ? (
                         <p className="text-[14px] text-[#777]">회원정보를 불러오는 중...</p>
