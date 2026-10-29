@@ -4,7 +4,9 @@ import com.tikit.auth.dto.response.JwtTokenResponseDTO;
 import com.tikit.auth.dto.request.MemberLoginRequestDTO;
 import com.tikit.auth.dto.request.MemberRegisterRequestDTO;
 import com.tikit.auth.entity.Member;
+import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
+import com.tikit.auth.exception.AccountRestrictedException;
 import com.tikit.auth.exception.LoginException;
 import com.tikit.auth.exception.RefreshTokenException;
 import com.tikit.auth.redis.RefreshTokenRepository;
@@ -72,6 +74,9 @@ public class MemberService {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         Member member = userDetails.getMember();
 
+        // 비밀번호 확인 후 계정 상태 검사. 정지 또는 탈퇴 계정은 토큰 발급 차단
+        validateActive(member);
+
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
 
@@ -104,6 +109,12 @@ public class MemberService {
         Member member = accountRepository.findById(Long.valueOf(accountId))
                 .orElseThrow(() -> new RefreshTokenException("계정이 존재하지 않습니다."));
 
+        // 로그인 이후 정지 또는 탈퇴된 계정은 세션 삭제 후 재발급 차단
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            refreshTokenRepository.delete(accountId);
+            validateActive(member);
+        }
+
         String newAccessToken = jwtProvider.generateAccessToken(member);
         String newRefreshToken = jwtProvider.generateRefreshToken(member);
 
@@ -128,5 +139,11 @@ public class MemberService {
     public void logout(String accountId) {
         refreshTokenRepository.delete(accountId);
 
+    }
+
+    private void validateActive(Member member) {
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            throw new AccountRestrictedException("이용이 제한된 계정입니다. status=" + member.getStatus());
+        }
     }
 }
