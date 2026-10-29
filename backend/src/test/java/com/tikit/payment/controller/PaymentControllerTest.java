@@ -2,6 +2,7 @@ package com.tikit.payment.controller;
 
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.Role;
+import com.tikit.common.ErrorCode;
 import com.tikit.util.JWTProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,10 @@ public class PaymentControllerTest {
         System.out.println("테스트: " + httpStatusCode);
 
         // then
-        assertThat(httpStatusCode).isEqualTo(401);
-        resultActions.andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+        ErrorCode errorCode = ErrorCode.AUTHENTICATION_REQUIRED;
+
+        assertThat(httpStatusCode).isEqualTo(errorCode.getStatus().value());
+        resultActions.andExpect(jsonPath("$.code").value(errorCode.name()));
     }
 
     @Test
@@ -72,7 +75,10 @@ public class PaymentControllerTest {
         System.out.println("테스트: " + responseBody);
         System.out.println("테스트: " + httpStatusCode);
 
-        assertThat(httpStatusCode).isEqualTo(404);
-        resultActions.andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+        // then
+        ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
+
+        assertThat(httpStatusCode).isEqualTo(errorCode.getStatus().value());
+        resultActions.andExpect(jsonPath("$.code").value(errorCode.name()));
     }
 }
