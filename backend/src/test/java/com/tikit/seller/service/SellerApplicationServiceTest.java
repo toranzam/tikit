@@ -116,16 +116,6 @@ class SellerApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("이미 판매자인 회원은 신청할 수 없다 (SELLER_APPLICATION_EXISTS)")
-    void apply_alreadySeller() {
-        Member member = member(MemberStatus.ACTIVE, Role.SELLER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
-
-        assertApplyFails(1L, ErrorCode.SELLER_APPLICATION_EXISTS);
-        verify(sellerApplicationRepository, never()).save(any());
-    }
-
-    @Test
     @DisplayName("일반 회원이 아니면 신청할 수 없다 (ACCESS_DENIED)")
     void apply_notMemberRole() {
         Member member = member(MemberStatus.ACTIVE, Role.ADMIN);

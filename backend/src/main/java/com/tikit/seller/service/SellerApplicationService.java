@@ -35,11 +35,6 @@ public class SellerApplicationService {
             throw new SellerException(ErrorCode.ACCOUNT_RESTRICTED);
         }
 
-        //현재 판매자일 경우("진행 중인 판매자 신청이 있거나 이미 승인된 판매자입니다.")
-        if(member.getRole() == Role.SELLER){
-            throw new SellerException(ErrorCode.SELLER_APPLICATION_EXISTS);
-        }
-
         //일반회원만 신청가능("접근 권한이 없거나 현재 상태에서는 접근할 수 없습니다.")
         if(member.getRole() != Role.MEMBER){
             throw new SellerException(ErrorCode.ACCESS_DENIED);
