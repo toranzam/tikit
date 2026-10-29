@@ -8,7 +8,7 @@ import { mockSessionSeats } from "../mocks/sessionSeats";
 
 // 개발용 Mock 데이터 사용 여부
 // 실제 백엔드 API 테스트 시 false로 변경
-const USE_MOCK_SEATS = true;
+const USE_MOCK_SEATS = false;
 
 // 좌석 상태별 색상 반환
 function getSeatColor(seat: SessionSeat, selected: boolean) {
@@ -66,9 +66,13 @@ export default function SeatSelectionPage() {
                 if (!cancelled) {
                     setSeats(data);
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
-                    setError("좌석 정보를 불러오지 못했습니다.");
+                    setError(
+                        error instanceof Error
+                            ? error.message
+                            : "좌석 정보를 불러오지 못했습니다."
+                    );
                 }
             } finally {
                 if (!cancelled) {

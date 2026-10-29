@@ -30,9 +30,13 @@ export async function getSessionSeats(
     );
 
     // HTTP 오류 확인
-    if (!response.ok) {
-        throw new Error("좌석 정보를 불러오지 못했습니다.");
-    }
+   if (response.status === 404) {
+       throw new Error("존재하지 않는 공연 회차입니다.");
+   }
+
+   if (!response.ok) {
+       throw new Error("좌석 정보를 불러오지 못했습니다.");
+   }
 
     // 응답 JSON을 좌석 목록으로 변환
     const result: ApiResponse<SessionSeat[]> = await response.json();
