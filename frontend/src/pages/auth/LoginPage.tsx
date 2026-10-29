@@ -86,7 +86,7 @@ export default function LoginPage() {
                            onChange={handleChange}
                            value={loginForm.email}
                            required
-                           className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"
+                           className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"
                     />
                 </label>
                 <label className="block">
@@ -99,7 +99,7 @@ export default function LoginPage() {
                            onChange={handleChange}
                            value={loginForm.password}
                            required
-                           className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"/>
+                           className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"/>
                 </label>
             </div>
             <div className="flex flex-col gap-[10px]">

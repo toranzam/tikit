@@ -120,7 +120,7 @@ export default function SignupPage() {
                         required
                         autoComplete="email"
                         placeholder="이메일"
-                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"
+                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"
                     />
                 </label>
 
@@ -135,7 +135,7 @@ export default function SignupPage() {
                         required
                         autoComplete="name"
                         placeholder="이름"
-                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"
+                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"
                     />
                 </label>
 
@@ -150,7 +150,7 @@ export default function SignupPage() {
                         required
                         autoComplete="new-password"
                         placeholder="비밀번호"
-                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"
+                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"
                     />
                 </label>
 
@@ -165,7 +165,7 @@ export default function SignupPage() {
                         required
                         autoComplete="new-password"
                         placeholder="비밀번호 확인"
-                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999]"
+                        className="h-[60px] w-full rounded-[15px] border border-[#999] bg-white px-5 py-[10px] text-sm leading-[normal] placeholder:text-[#999] focus:outline-none!"
                     />
                 </label>
 

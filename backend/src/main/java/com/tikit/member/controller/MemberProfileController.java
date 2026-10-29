@@ -23,7 +23,7 @@ public class MemberProfileController {
 
     private final MemberProfileService memberProfileService;
 
-    @PreAuthorize("hasRole('MEMBER')")
+    @PreAuthorize("hasAnyRole('MEMBER', 'MANAGER', 'ADMIN')")
     @GetMapping
     public ResponseDTO<MemberProfileResponseDTO> getMe(
             @AuthenticationPrincipal String memberId
@@ -35,7 +35,7 @@ public class MemberProfileController {
     }
 
     // 회원정보 수정 API - 이름 변경
-    @PreAuthorize("hasRole('MEMBER')")
+    @PreAuthorize("hasAnyRole('MEMBER', 'MANAGER', 'ADMIN')")
     @PatchMapping
     public ResponseDTO<MemberProfileResponseDTO> updateMe(
 
