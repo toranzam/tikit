@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ActiveProfiles("local")
@@ -28,6 +29,59 @@ public class PaymentControllerTest {
 
     @Autowired
     private JWTProvider jwtProvider;
+
+    @Test
+    @DisplayName("토큰 없이 결제를 준비하면 401을 반환")
+    void prepare_payment_attempt_without_token() throws Exception {
+        // given
+
+        // when
+        ResultActions resultActions = mvc.perform(post("/api/v1/bookings/1/payment-attempts"));
+        String responseBody = resultActions.andReturn().getResponse().getContentAsString();
+        int httpStatusCode = resultActions.andReturn().getResponse().getStatus();
+
+        System.out.println("테스트: " + responseBody);
+        System.out.println("테스트: " + httpStatusCode);
+
+        // then
+        ErrorCode errorCode = ErrorCode.AUTHENTICATION_REQUIRED;
+
+        assertThat(httpStatusCode).isEqualTo(errorCode.getStatus().value());
+        resultActions.andExpect(jsonPath("$.code").value(errorCode.name()));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 예매로 결제를 준비하면 404를 반환")
+    void prepare_payment_attempt_booking_not_found() throws Exception {
+        // given
+        Member member = Member.create(
+                "payment-test@example.com",
+                "encodedPassword",
+                "tester",
+                Role.MEMBER
+        );
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        String accessToken = jwtProvider.generateAccessToken(member);
+
+        // when
+        ResultActions resultActions = mvc.perform(
+                post("/api/v1/bookings/999999999/payment-attempts")
+                        .header("Authorization", "Bearer " + accessToken)
+        );
+
+        String responseBody = resultActions.andReturn().getResponse().getContentAsString();
+        int httpStatusCode = resultActions.andReturn().getResponse().getStatus();
+
+        System.out.println("테스트: " + responseBody);
+        System.out.println("테스트: " + httpStatusCode);
+
+        // then
+        ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
+
+        assertThat(httpStatusCode).isEqualTo(errorCode.getStatus().value());
+        resultActions.andExpect(jsonPath("$.code").value(errorCode.name()));
+    }
 
     @Test
     @DisplayName("토큰 없이 결제 결과를 조회하면 401을 반환")
