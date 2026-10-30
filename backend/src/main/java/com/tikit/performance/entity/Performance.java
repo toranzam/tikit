@@ -85,7 +85,7 @@ public class Performance {
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
-    private Instant updateAt;
+    private Instant updatedAt;
 
     public static Performance createManual(Member createdBy, Genre genre, String title,
                                            String venueName, String organizerName, String description, String posterUrl,
