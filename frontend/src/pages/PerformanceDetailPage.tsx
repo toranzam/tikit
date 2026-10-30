@@ -1,5 +1,16 @@
 import {Link, useParams} from 'react-router'
 import {mockPerformances} from '../mocks/performances'
+import SessionSelector from '../components/performance/SessionSelector'
+import type {PerformanceSession} from '../components/performance/SessionSelector'
+
+// 실제 공연 회차 API가 연결되기 전까지 사용하는 임시 데이터
+const mockSessions: PerformanceSession[] = [
+  {id: 'session-1', date: '2026-10-30', time: '14:00'},
+  {id: 'session-2', date: '2026-10-30', time: '19:00'},
+  {id: 'session-3', date: '2026-10-31', time: '15:00'},
+  {id: 'session-4', date: '2026-11-01', time: '14:00'},
+  {id: 'session-5', date: '2026-11-01', time: '18:00'},
+]
 
 export default function PerformanceDetailPage() {
   const {performanceId} = useParams()
@@ -14,6 +25,7 @@ export default function PerformanceDetailPage() {
         <h1 className="text-2xl font-bold">
           공연 정보를 찾을 수 없습니다.
         </h1>
+
         <Link to="/" className="mt-6 inline-block underline">
           메인으로 이동
         </Link>
@@ -50,6 +62,11 @@ export default function PerformanceDetailPage() {
           </dl>
         </section>
       </div>
+
+      <SessionSelector
+        key={performance.id}
+        sessions={mockSessions}
+      />
     </main>
   )
 }
