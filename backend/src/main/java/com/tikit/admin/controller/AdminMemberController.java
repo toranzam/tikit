@@ -1,0 +1,39 @@
+package com.tikit.admin.controller;
+
+import com.tikit.admin.dto.request.AdminMemberSearchRequestDTO;
+import com.tikit.admin.dto.response.AdminMemberDetailResponseDTO;
+import com.tikit.admin.dto.response.AdminMemberListResponseDTO;
+import com.tikit.admin.service.AdminMemberService;
+import com.tikit.common.dto.ResponseDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/admin/members")
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminMemberController {
+
+    private final AdminMemberService adminMemberService;
+
+    @GetMapping
+    public ResponseDTO<AdminMemberListResponseDTO> getMembers(
+            @Valid @ModelAttribute AdminMemberSearchRequestDTO request
+    ) {
+        return ResponseDTO.success("회원 목록 조회 성공", adminMemberService.getMembers(request));
+    }
+
+    @GetMapping("/{memberId}")
+    public ResponseDTO<AdminMemberDetailResponseDTO> getMember(
+            @PathVariable @Positive(message = "회원 ID는 1 이상이어야 합니다.") Long memberId
+    ) {
+        return ResponseDTO.success("회원 상세 조회 성공", adminMemberService.getMember(memberId));
+    }
+}
