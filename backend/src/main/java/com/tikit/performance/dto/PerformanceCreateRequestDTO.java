@@ -15,9 +15,11 @@ import java.time.LocalDate;
 public class PerformanceCreateRequestDTO {
 
     @NotNull
+    //MANUAL 또는 KOPIS
     private PerformanceSource source;
 
     @Size(max = 30)
+    // KOPIS일 때만 사용
     private String kopisId;
 
     @NotBlank
