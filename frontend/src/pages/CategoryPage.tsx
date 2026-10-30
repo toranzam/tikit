@@ -18,7 +18,9 @@ function CategoryContent({categoryId}: {categoryId: string}) {
     return (
       <div className="px-5 py-20 text-center">
         <h1 className="text-2xl font-bold">존재하지 않는 카테고리입니다.</h1>
-        <Link to="/" className="mt-6 inline-block underline">메인으로 이동</Link>
+        <Link to="/" className="mt-6 inline-block underline">
+          메인으로 이동
+        </Link>
       </div>
     )
   }
@@ -32,9 +34,15 @@ function CategoryContent({categoryId}: {categoryId: string}) {
   )
 
   const totalPages = Math.ceil(rankedPerformances.length / PAGE_SIZE)
+
+  const safeCurrentPage = Math.min(
+    Math.max(currentPage, 1),
+    Math.max(totalPages, 1),
+  )
+
   const paginatedPerformances = rankedPerformances.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE,
   )
 
   return (
@@ -57,7 +65,7 @@ function CategoryContent({categoryId}: {categoryId: string}) {
         />
 
         <Pagination
-          currentPage={currentPage}
+          currentPage={safeCurrentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
         />
