@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 명시적으로 지정한 팀 PostgreSQL에서 동일한 API 테스트 30개를 실행합니다.
- * 실제 public.members는 읽기만 하며 데이터 쓰기는 세션 임시 테이블로 제한합니다.
+ * 명시적으로 지정한 팀 PostgreSQL에서 회원 조회·상태 변경 API 테스트를 실행합니다.
+ * 실제 테이블의 구조만 읽으며 데이터 쓰기는 세션 임시 테이블로 제한합니다.
  */
 @EnabledIfEnvironmentVariable(named = "TEAM_DB_URL", matches = "jdbc:postgresql:.*")
 @SpringBootTest(classes = AdminMemberControllerTest.TestConfig.class, properties = {
@@ -52,9 +52,23 @@ class AdminMemberPostgresqlTest extends AdminMemberControllerTest {
                 ) ON COMMIT DROP
                 """);
 
+        teamJdbcTemplate.execute("""
+                CREATE TEMPORARY TABLE audit_logs (
+                    LIKE public.audit_logs INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING IDENTITY
+                ) ON COMMIT DROP
+                """);
+        // 감사 이력의 처리자 FK도 임시 회원 테이블을 참조하게 합니다.
+        teamJdbcTemplate.execute("""
+                ALTER TABLE pg_temp.audit_logs ADD FOREIGN KEY (actor_member_id)
+                REFERENCES pg_temp.members(id)
+                """);
+
         // JPA/JDBC가 public.members 대신 임시 members를 사용하는지 쓰기 전에 확인합니다.
         assertThat(teamJdbcTemplate.queryForObject("""
                 SELECT to_regclass('members') = to_regclass('pg_temp.members')
+                """, Boolean.class)).isTrue();
+        assertThat(teamJdbcTemplate.queryForObject("""
+                SELECT to_regclass('audit_logs') = to_regclass('pg_temp.audit_logs')
                 """, Boolean.class)).isTrue();
 
         // 명시적인 테스트 데이터 쓰기가 public 테이블로 향하지 않도록 참조 FK가 없는지도 확인합니다.
@@ -64,15 +78,15 @@ class AdminMemberPostgresqlTest extends AdminMemberControllerTest {
                 """, Long.class)).isZero();
     }
 
-    // JPA SQL도 임시 테이블을 명시적으로 사용하게 하여 원본 회원 테이블 쓰기를 방지합니다.
+    // JPA SQL도 임시 테이블을 명시적으로 사용하게 하여 원본 데이터 쓰기를 방지합니다.
     public static class TemporaryMemberTableInspector implements StatementInspector {
 
         private static final Pattern MEMBER_TABLE = Pattern.compile(
-                "(?i)\\b(from|into|update|join)\\s+(?:public\\.)?members\\b");
+                "(?i)\\b(from|into|update|join)\\s+(?:(?:public|pg_temp)\\.)?(members|audit_logs)\\b");
 
         @Override
         public String inspect(String sql) {
-            return MEMBER_TABLE.matcher(sql).replaceAll("$1 pg_temp.members");
+            return MEMBER_TABLE.matcher(sql).replaceAll("$1 pg_temp.$2");
         }
     }
 }

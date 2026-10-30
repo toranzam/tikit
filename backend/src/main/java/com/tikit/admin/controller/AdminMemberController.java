@@ -1,6 +1,7 @@
 package com.tikit.admin.controller;
 
 import com.tikit.admin.dto.request.AdminMemberSearchRequestDTO;
+import com.tikit.admin.dto.request.AdminMemberStatusChangeRequestDTO;
 import com.tikit.admin.dto.response.AdminMemberDetailResponseDTO;
 import com.tikit.admin.dto.response.AdminMemberListResponseDTO;
 import com.tikit.admin.service.AdminMemberService;
@@ -9,9 +10,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,5 +39,15 @@ public class AdminMemberController {
             @PathVariable @Positive(message = "회원 ID는 1 이상이어야 합니다.") Long memberId
     ) {
         return ResponseDTO.success("회원 상세 조회 성공", adminMemberService.getMember(memberId));
+    }
+
+    @PatchMapping("/{memberId}/status")
+    public ResponseDTO<AdminMemberDetailResponseDTO> changeStatus(
+            @AuthenticationPrincipal String actorId,
+            @PathVariable @Positive(message = "회원 ID는 1 이상이어야 합니다.") Long memberId,
+            @Valid @RequestBody AdminMemberStatusChangeRequestDTO request
+    ) {
+        return ResponseDTO.success("회원 상태 변경 성공",
+                adminMemberService.changeStatus(Long.parseLong(actorId), memberId, request));
     }
 }

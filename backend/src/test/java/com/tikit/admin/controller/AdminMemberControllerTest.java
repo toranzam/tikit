@@ -2,6 +2,12 @@ package com.tikit.admin.controller;
 
 import com.tikit.admin.controller.advice.AdminMemberControllerAdvice;
 import com.tikit.admin.service.AdminMemberService;
+import com.tikit.admin.entity.AuditLog;
+import com.tikit.admin.repository.AuditLogRepository;
+import com.tikit.auth.dto.request.MemberLoginRequestDTO;
+import com.tikit.auth.exception.AccountRestrictedException;
+import com.tikit.auth.redis.RefreshTokenRepository;
+import com.tikit.auth.service.MemberService;
 import com.tikit.auth.entity.Member;
 import com.tikit.auth.entity.MemberStatus;
 import com.tikit.auth.entity.Role;
@@ -10,6 +16,7 @@ import com.tikit.common.advice.GlobalExceptionHandler;
 import com.tikit.config.security.CustomAccessDeniedHandler;
 import com.tikit.config.security.CustomAuthenticationEntryPoint;
 import com.tikit.config.security.SecurityConfig;
+import com.tikit.config.security.CustomUserDetails;
 import com.tikit.filter.JWTCheckFilter;
 import com.tikit.util.JWTProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +28,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -29,8 +35,9 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,35 +46,32 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import jakarta.persistence.EntityManager;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(classes = AdminMemberControllerTest.TestConfig.class, properties = {
-        "spring.datasource.url=jdbc:h2:mem:admin-member-test;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "jwt.secret=admin-member-test-only-secret-key-at-least-32-bytes"
-})
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Transactional
-class AdminMemberControllerTest {
+abstract class AdminMemberControllerTest {
 
     // 회원 조회에 필요한 구성만 사용하고 운영 DB·Redis에는 연결하지 않습니다.
     @Configuration(proxyBeanMethods = false)
     @EnableAutoConfiguration
-    @EntityScan(basePackageClasses = Member.class)
-    @EnableJpaRepositories(basePackageClasses = MemberRepository.class)
+    @EntityScan(basePackageClasses = {Member.class, AuditLog.class})
+    @EnableJpaRepositories(basePackageClasses = {MemberRepository.class, AuditLogRepository.class})
     @EnableJpaAuditing
-    @Import({AdminMemberController.class, AdminMemberService.class,
+    @Import({AdminMemberController.class, AdminMemberService.class, MemberService.class,
             AdminMemberControllerAdvice.class, GlobalExceptionHandler.class,
             SecurityConfig.class, JWTCheckFilter.class, JWTProvider.class,
             CustomAuthenticationEntryPoint.class, CustomAccessDeniedHandler.class})
@@ -89,6 +93,21 @@ class AdminMemberControllerTest {
     @MockitoBean
     private UserDetailsService userDetailsService;
 
+    @MockitoBean
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private MemberService memberService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EntityManager entityManager;
+
     private Member alice;
     private Member bob;
     private Member manager;
@@ -105,9 +124,8 @@ class AdminMemberControllerTest {
         adminToken = token(Role.ADMIN);
     }
 
-    // PostgreSQL 테스트에서는 테스트 데이터 저장 전에 세션 임시 테이블을 준비합니다.
-    protected void prepareDatabase() {
-    }
+    // 팀 PostgreSQL 테스트 클래스에서 테스트 데이터 저장 전에 임시 테이블을 준비합니다.
+    protected abstract void prepareDatabase();
 
     @Test
     @DisplayName("회원 목록은 기본 페이지로 조회하고 민감정보를 제외한다")
@@ -287,6 +305,227 @@ class AdminMemberControllerTest {
         performAsAdmin(get("/api/v1/admin/members/" + id))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("활성 회원을 정지하고 처리자·시각·사유·전후 상태를 저장한다")
+    void suspendMemberAndRecordAuditLog() throws Exception {
+        Member admin = usePersistedAdmin();
+        changeStatus(alice.getId(), "SUSPENDED", "  운영 정책 위반  ")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
+        entityManager.clear();
+
+        assertThat(memberRepository.findById(alice.getId()).orElseThrow().getStatus())
+                .isEqualTo(MemberStatus.SUSPENDED);
+        AuditLog log = auditLogRepository.findAll().getFirst();
+        assertThat(log.getActorMemberId()).isEqualTo(admin.getId());
+        assertThat(log.getTargetType()).isEqualTo("MEMBER");
+        assertThat(log.getTargetId()).isEqualTo(alice.getId());
+        assertThat(log.getAction()).isEqualTo("MEMBER_SUSPEND");
+        assertThat(log.getReason()).isEqualTo("운영 정책 위반");
+        assertThat(log.getBeforeState()).containsEntry("status", "ACTIVE");
+        assertThat(log.getAfterState()).containsEntry("status", "SUSPENDED");
+        assertThat(log.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("정지 회원을 활성 상태로 복구하고 해제 이력을 저장한다")
+    void resumeSuspendedMember() throws Exception {
+        usePersistedAdmin();
+        changeStatus(bob.getId(), "ACTIVE", "정지 해제 승인")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+        entityManager.clear();
+
+        assertThat(memberRepository.findById(bob.getId()).orElseThrow().getStatus())
+                .isEqualTo(MemberStatus.ACTIVE);
+        AuditLog log = auditLogRepository.findAll().getFirst();
+        assertThat(log.getAction()).isEqualTo("MEMBER_RESUME");
+        assertThat(log.getBeforeState()).containsEntry("status", "SUSPENDED");
+        assertThat(log.getAfterState()).containsEntry("status", "ACTIVE");
+    }
+
+    @Test
+    @DisplayName("MANAGER 회원도 정지와 해제가 가능하고 역할은 유지된다")
+    void managerStatusCanChangeWithoutChangingRole() throws Exception {
+        usePersistedAdmin();
+        changeStatus(manager.getId(), "SUSPENDED", "운영 정책 위반")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("MANAGER"))
+                .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
+        changeStatus(manager.getId(), "ACTIVE", "조치 완료")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("MANAGER"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+        assertThat(auditLogRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("이미 정지된 회원을 다시 정지하거나 활성 회원을 해제하면 409를 반환한다")
+    void duplicateTransitionsAreRejectedWithoutAuditLog() throws Exception {
+        usePersistedAdmin();
+        changeStatus(bob.getId(), "SUSPENDED", "중복 정지")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+        changeStatus(alice.getId(), "ACTIVE", "중복 해제")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @DisplayName("탈퇴 회원은 정지하거나 활성 상태로 복구할 수 없다")
+    @ValueSource(strings = {"SUSPENDED", "ACTIVE"})
+    void withdrawnMemberCannotChangeStatus(String newStatus) throws Exception {
+        usePersistedAdmin();
+        changeStatus(withdrawn.getId(), newStatus, "탈퇴 계정 변경 시도")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+        assertThat(memberRepository.findById(withdrawn.getId()).orElseThrow().getStatus())
+                .isEqualTo(MemberStatus.WITHDRAWN);
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("상태 변경 API로 회원을 탈퇴 처리할 수 없다")
+    void requestedWithdrawalIsRejected() throws Exception {
+        usePersistedAdmin();
+        changeStatus(alice.getId(), "WITHDRAWN", "잘못된 전환")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+        assertThat(alice.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("자기 계정과 다른 관리자 계정의 상태 변경은 403으로 차단한다")
+    void adminAccountsAreProtected() throws Exception {
+        Member admin = usePersistedAdmin();
+        Member other = saveMember("other-admin@example.com", "다른 관리자", Role.ADMIN, MemberStatus.ACTIVE);
+        for (Long id : new Long[]{admin.getId(), other.getId()}) {
+            changeStatus(id, "SUSPENDED", "관리자 정지 시도")
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("ADMIN_ACCOUNT_PROTECTED"));
+        }
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 회원 상태 변경은 404를 반환한다")
+    void missingStatusChangeTargetReturns404() throws Exception {
+        usePersistedAdmin();
+        changeStatus(999999999L, "SUSPENDED", "대상 없음")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @DisplayName("잘못된 상태 변경 본문은 400을 반환한다")
+    @ValueSource(strings = {"{}", "{\"status\":\"DELETED\",\"reason\":\"사유\"}",
+            "{\"status\":\"SUSPENDED\"}", "{\"status\":\"SUSPENDED\",\"reason\":\"   \"}",
+            "{\"status\":null,\"reason\":\"사유\"}", "not-json"})
+    void invalidStatusChangeBodyReturns400(String body) throws Exception {
+        usePersistedAdmin();
+        performAsAdmin(patch("/api/v1/admin/members/{id}/status", alice.getId())
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("1000자를 초과하는 상태 변경 사유는 400을 반환한다")
+    void tooLongStatusChangeReasonReturns400() throws Exception {
+        usePersistedAdmin();
+        changeStatus(alice.getId(), "SUSPENDED", "a".repeat(1001))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("비로그인 회원 상태 변경은 401을 반환한다")
+    void anonymousStatusChangeReturns401() throws Exception {
+        mvc.perform(patch("/api/v1/admin/members/{id}/status", alice.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"SUSPENDED\",\"reason\":\"사유\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @DisplayName("MEMBER와 MANAGER의 회원 상태 변경은 403을 반환한다")
+    @EnumSource(value = Role.class, names = {"MEMBER", "MANAGER"})
+    void nonAdminStatusChangeReturns403(Role role) throws Exception {
+        mvc.perform(patch("/api/v1/admin/members/{id}/status", alice.getId())
+                .header("Authorization", "Bearer " + token(role))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"SUSPENDED\",\"reason\":\"사유\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("기존 ADMIN 토큰이 있어도 정지된 관리자는 상태를 변경할 수 없다")
+    void suspendedAdminCannotChangeStatus() throws Exception {
+        Member admin = usePersistedAdmin();
+        ReflectionTestUtils.setField(admin, "status", MemberStatus.SUSPENDED);
+        memberRepository.flush();
+        changeStatus(alice.getId(), "SUSPENDED", "권한 차단 확인")
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_RESTRICTED"));
+        assertThat(auditLogRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("정지 처리 결과가 로그인 차단에 반영되고 해제 후 다시 로그인할 수 있다")
+    void suspensionAndResumeAreReflectedInLogin() throws Exception {
+        usePersistedAdmin();
+        String password = "Example-password-2026!";
+        ReflectionTestUtils.setField(alice, "passwordHash", passwordEncoder.encode(password));
+        memberRepository.flush();
+        when(userDetailsService.loadUserByUsername(alice.getEmail())).thenAnswer(invocation ->
+                new CustomUserDetails(memberRepository.findByEmail(alice.getEmail()).orElseThrow()));
+        MemberLoginRequestDTO request = new MemberLoginRequestDTO(alice.getEmail(), password);
+        assertThat(memberService.login(request).getAccessToken()).isNotBlank();
+
+        changeStatus(alice.getId(), "SUSPENDED", "정지 승인").andExpect(status().isOk());
+        entityManager.clear();
+        assertThatThrownBy(() -> memberService.login(request)).isInstanceOf(AccountRestrictedException.class);
+
+        changeStatus(alice.getId(), "ACTIVE", "해제 승인").andExpect(status().isOk());
+        entityManager.clear();
+        assertThat(memberService.login(request).getAccessToken()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("정지 전에 발급한 리프레시 토큰도 재발급 시 차단하고 저장된 세션을 삭제한다")
+    void suspensionBlocksExistingRefreshToken() throws Exception {
+        usePersistedAdmin();
+        String refreshToken = jwtProvider.generateRefreshToken(alice);
+        changeStatus(alice.getId(), "SUSPENDED", "정지 승인").andExpect(status().isOk());
+        entityManager.clear();
+
+        assertThatThrownBy(() -> memberService.refresh(refreshToken))
+                .isInstanceOf(AccountRestrictedException.class);
+        verify(refreshTokenRepository).delete(alice.getId().toString());
+        verify(refreshTokenRepository, never()).rotate(anyString(), anyString(), anyString());
+    }
+
+    private Member usePersistedAdmin() {
+        Member admin = saveMember("admin@example.com", "관리자", Role.ADMIN, MemberStatus.ACTIVE);
+        adminToken = jwtProvider.generateAccessToken(admin);
+        return admin;
+    }
+
+    private ResultActions changeStatus(Long memberId, String newStatus, String reason) throws Exception {
+        return performAsAdmin(patch("/api/v1/admin/members/{id}/status", memberId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"" + newStatus + "\",\"reason\":\"" + reason + "\"}"));
     }
 
     private ResultActions performAsAdmin(MockHttpServletRequestBuilder request) throws Exception {
