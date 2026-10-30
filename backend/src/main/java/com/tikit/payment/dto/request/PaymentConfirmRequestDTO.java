@@ -18,7 +18,7 @@ public class PaymentConfirmRequestDTO {
     @Pattern(regexp = "^[A-Za-z0-9_-]{6,64}$", message = "주문 번호 형식이 올바르지 않습니다.")
     private String orderId;
 
-    @NotBlank(message = "결제 금액은 필수 입력 항목입니다.")
+    @NotNull(message = "결제 금액은 필수 입력 항목입니다.")
     @Min(value = 0, message = "결제 금액은 0원 이상이어야 합니다.")
     @Max(value = 100_000_000, message = "결제 금액은 1억 원 이하여야 합니다.")
     private Long amount;
