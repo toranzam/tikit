@@ -6,13 +6,16 @@ import com.tikit.notification.repository.OpeningSubscriptionRepository;
 import com.tikit.notification.repository.PerformanceLookupRepository;
 
 import com.tikit.auth.entity.Member;
-import com.tikit.auth.repository.AccountRepository;
+import com.tikit.auth.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 
@@ -24,7 +27,7 @@ public class OpeningSubscriptionService {
 
     private final OpeningSubscriptionRepository subscriptionRepository;
     private final PerformanceLookupRepository performanceLookupRepository;
-    private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
 
     // 공연별 알림 신청
     @Transactional
@@ -37,11 +40,11 @@ public class OpeningSubscriptionService {
         OpeningSubscriptionId id =
                 new OpeningSubscriptionId(memberId, performanceId);
 
+        // 이미 신청한 경우 - 유지
         if (subscriptionRepository.existsById(id)) {
-            throw new IllegalStateException("이미 알림을 신청한 공연입니다.");
+            return;
         }
 
-        // 신청 저장
         OpeningSubscription subscription =
                 new OpeningSubscription(memberId, performanceId);
 
@@ -55,19 +58,38 @@ public class OpeningSubscriptionService {
         OpeningSubscriptionId id =
                 new OpeningSubscriptionId(memberId, performanceId);
 
-        OpeningSubscription subscription = subscriptionRepository.findById(id)
-                .orElseThrow(() ->
-                        new NoSuchElementException("알림 신청 내역이 없습니다."));
+        OpeningSubscription subscription =
+                subscriptionRepository.findById(id)
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "알림 신청 내역이 없습니다."
+                                )
+                        );
 
         subscriptionRepository.delete(subscription);
     }
 
-    // 회원별 알림 신청 목록 조회
-    public List<OpeningSubscription> getSubscriptions(Long memberId) {
-        return subscriptionRepository.findByMemberId(memberId);
+    // 회원별 알림 신청 목록 페이지네이션 조회
+    public Page<OpeningSubscription> getSubscriptions(Long memberId, int page, int size) {
+
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "페이지 번호 또는 크기가 올바르지 않습니다."
+            );
+        }
+
+        // 공연 ID 정렬
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("performanceId").ascending()
+        );
+
+        // DB에서 필요한 페이지만 조회
+        return subscriptionRepository.findByMemberId(memberId, pageable);
     }
 
-    // 특정 공연의 알림 신청 여부 조회
+    // 특정 공연 알림 신청 여부 조회
     public boolean isSubscribed(Long memberId, Long performanceId) {
         return subscriptionRepository.existsByMemberIdAndPerformanceId(
                 memberId, performanceId
@@ -77,9 +99,12 @@ public class OpeningSubscriptionService {
     // 전체 알림 수신 설정 조회
     public boolean getNotificationEnabled(Long memberId) {
 
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() ->
-                        new NoSuchElementException("회원을 찾을 수 없습니다."));
+                        new NoSuchElementException(
+                                "회원을 찾을 수 없습니다."
+                        )
+                );
 
         return member.isNotificationEnabled();
     }
@@ -88,13 +113,15 @@ public class OpeningSubscriptionService {
     @Transactional
     public boolean updateNotificationEnabled(Long memberId, boolean enabled) {
 
-        Member member = accountRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() ->
-                        new NoSuchElementException("회원을 찾을 수 없습니다."));
+                        new NoSuchElementException(
+                                "회원을 찾을 수 없습니다."
+                        )
+                );
 
         member.changeNotificationEnabled(enabled);
 
         return member.isNotificationEnabled();
     }
-
 }

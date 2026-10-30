@@ -1,24 +1,23 @@
 package com.tikit.notification.controller;
 
+import com.tikit.common.ErrorCode;
 import com.tikit.common.dto.ResponseDTO;
+import com.tikit.notification.dto.NotificationSettingUpdateRequestDTO;
 import com.tikit.notification.entity.OpeningSubscription;
 import com.tikit.notification.service.OpeningSubscriptionService;
-import com.tikit.notification.dto.NotificationSettingUpdateRequestDTO;
-import com.tikit.common.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
-
-// 공연별 예매 시작 알림 신청 API
+// 공연별 예매 시작 알림 및 전체 알림 설정 API
 @RestController
-@RequestMapping("/api/v1/opening-subscriptions")
+@RequestMapping("/api/v1/me")
 @RequiredArgsConstructor
 public class OpeningSubscriptionController {
 
@@ -26,8 +25,7 @@ public class OpeningSubscriptionController {
 
     private Long getMemberId(String accountId) {
         if (accountId == null) {
-            throw new org.springframework.security.authentication
-                    .AuthenticationCredentialsNotFoundException(
+            throw new AuthenticationCredentialsNotFoundException(
                     "로그인이 필요합니다."
             );
         }
@@ -35,8 +33,8 @@ public class OpeningSubscriptionController {
         return Long.valueOf(accountId);
     }
 
-    // 공연별 알림 신청
-    @PostMapping("/{performanceId}")
+    // 공연별 예매 시작 알림 신청
+    @PutMapping("/opening-subscriptions/{performanceId}")
     public ResponseEntity<ResponseDTO<Void>> subscribe(
             @AuthenticationPrincipal String accountId,
             @PathVariable Long performanceId
@@ -45,13 +43,13 @@ public class OpeningSubscriptionController {
 
         subscriptionService.subscribe(memberId, performanceId);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ResponseDTO.success("알림 신청 성공"));
+        return ResponseEntity.ok(
+                ResponseDTO.success("알림 신청 성공")
+        );
     }
 
-    // 공연별 알림 신청 <<해제>>
-    @DeleteMapping("/{performanceId}")
+    // 공연별 예매 시작 알림 <<해제>>
+    @DeleteMapping("/opening-subscriptions/{performanceId}")
     public ResponseEntity<ResponseDTO<Void>> unsubscribe(
             @AuthenticationPrincipal String accountId,
             @PathVariable Long performanceId
@@ -60,67 +58,65 @@ public class OpeningSubscriptionController {
 
         subscriptionService.unsubscribe(memberId, performanceId);
 
-        return ResponseEntity
-                .ok(ResponseDTO.success("알림 신청 해제 성공"));
-    }
-
-    // 회원별 알림 신청 공연 ID 목록 조회
-    @GetMapping
-    public ResponseEntity<ResponseDTO<List<Long>>> getSubscriptions(
-            @AuthenticationPrincipal String accountId
-    ) {
-        Long memberId = getMemberId(accountId);
-
-        List<Long> performanceIds = subscriptionService
-                .getSubscriptions(memberId)
-                .stream()
-                .map(OpeningSubscription::getPerformanceId)
-                .toList();
-
         return ResponseEntity.ok(
-                ResponseDTO.success("알림 신청 목록 조회 성공", performanceIds)
+                ResponseDTO.success("알림 신청 해제 성공")
         );
     }
 
-    // 특정 공연 알림 신청 여부 조회
-    @GetMapping("/{performanceId}")
-    public ResponseEntity<ResponseDTO<Boolean>> isSubscribed(
+    // 공연별 알림 신청 목록 조회
+    @GetMapping("/opening-subscriptions")
+    public ResponseEntity<ResponseDTO<Page<Long>>> getSubscriptions(
             @AuthenticationPrincipal String accountId,
-            @PathVariable Long performanceId
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         Long memberId = getMemberId(accountId);
 
-        boolean subscribed =
-                subscriptionService.isSubscribed(memberId, performanceId);
+        Page<OpeningSubscription> subscriptions =
+                subscriptionService.getSubscriptions(
+                        memberId, page, size
+                );
+
+        // 엔티티를 공연 ID 목록으로 변환
+        Page<Long> result = subscriptions.map(
+                OpeningSubscription::getPerformanceId
+        );
 
         return ResponseEntity.ok(
-                ResponseDTO.success("알림 신청 상태 조회 성공", subscribed)
+                ResponseDTO.success("알림 신청 목록 조회 성공", result)
         );
     }
+
+
+    /*      전체 알림 설정      */
 
     // 전체 알림 수신 설정 조회
-    @GetMapping("/settings")
+    @GetMapping("/notification-preference")
     public ResponseEntity<ResponseDTO<Boolean>> getNotificationSetting(
             @AuthenticationPrincipal String accountId
     ) {
         Long memberId = getMemberId(accountId);
 
-        boolean enabled = subscriptionService.getNotificationEnabled(memberId);
+        boolean enabled =
+                subscriptionService.getNotificationEnabled(memberId);
 
         return ResponseEntity.ok(
-                ResponseDTO.success("전체 알림 수신 설정 조회 성공", enabled)
+                ResponseDTO.success(
+                        "전체 알림 수신 설정 조회 성공",
+                        enabled
+                )
         );
     }
 
     // 전체 알림 수신 설정 <<변경>>
-    @PatchMapping("/settings")
+    @PutMapping("/notification-preference")
     public ResponseEntity<ResponseDTO<?>> updateNotificationSetting(
             @AuthenticationPrincipal String accountId,
             @RequestBody NotificationSettingUpdateRequestDTO request
     ) {
         Long memberId = getMemberId(accountId);
 
-        // 요청값 누락 확인
+        // 요청값 누락 검증
         if (request == null || request.enabled() == null) {
             ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
 
@@ -132,13 +128,17 @@ public class OpeningSubscriptionController {
                     ));
         }
 
-        boolean enabled = subscriptionService.updateNotificationEnabled(
-                memberId,
-                request.enabled()
-        );
+        boolean enabled =
+                subscriptionService.updateNotificationEnabled(
+                        memberId,
+                        request.enabled()
+                );
 
         return ResponseEntity.ok(
-                ResponseDTO.success("전체 알림 수신 설정 변경 성공", enabled)
+                ResponseDTO.success(
+                        "전체 알림 수신 설정 변경 성공",
+                        enabled
+                )
         );
     }
 }

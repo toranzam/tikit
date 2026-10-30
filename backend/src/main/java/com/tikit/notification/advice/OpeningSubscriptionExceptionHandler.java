@@ -11,12 +11,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.NoSuchElementException;
 
 
-// TODO: 이름 짱 길다
 // 예외 처리 - 공연별 알림 API
 @RestControllerAdvice(assignableTypes = OpeningSubscriptionController.class)
 public class OpeningSubscriptionExceptionHandler {
 
-    // 중복 신청 처리
+    // 중복 신청
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ResponseDTO<Void>> handleDuplicate(
             IllegalStateException e
@@ -28,7 +27,7 @@ public class OpeningSubscriptionExceptionHandler {
                 .body(ResponseDTO.fail(errorCode, e.getMessage()));
     }
 
-    // 알림 신청 내역 없음 처리
+    // 알림 신청 내역 없음
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ResponseDTO<Void>> handleNotFound(
             NoSuchElementException e
@@ -40,7 +39,7 @@ public class OpeningSubscriptionExceptionHandler {
                 .body(ResponseDTO.fail(errorCode, e.getMessage()));
     }
 
-    // 인증 정보 없음 처리
+    // 인증 정보 없음
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
     public ResponseEntity<ResponseDTO<Void>> handleUnauthorized(
             AuthenticationCredentialsNotFoundException e
@@ -51,4 +50,17 @@ public class OpeningSubscriptionExceptionHandler {
                 .status(errorCode.getStatus())
                 .body(ResponseDTO.fail(errorCode, e.getMessage()));
     }
+
+    // 페이지 번호 또는 크기 오류
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleValidation(
+            IllegalArgumentException e
+    ) {
+        ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
+
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ResponseDTO.fail(errorCode, e.getMessage()));
+    }
+
 }
