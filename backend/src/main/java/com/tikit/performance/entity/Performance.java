@@ -53,7 +53,7 @@ public class Performance {
     private String description;
 
     @Column(name = "poster_url", columnDefinition = "TEXT")
-    private String posterurl;
+    private String posterUrl;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -88,26 +88,41 @@ public class Performance {
     private Instant updateAt;
 
     public static Performance createManual(Member createdBy, Genre genre, String title,
-                                           String venueName, String organizerName, String description, String posterurl,
-                                           LocalDate startDate, LocalDate endDate, Short bookingLimitPerMember){
+                                           String venueName, String organizerName, String description, String posterUrl,
+                                           LocalDate startDate, LocalDate endDate, Short bookingLimitPerMember) {
+        return build(createdBy, genre, PerformanceSource.MANUAL, null, title, venueName,
+                organizerName, description, posterUrl, startDate, endDate, bookingLimitPerMember);
+    }
+
+    public static Performance createFromKopis(Member createdBy, Genre genre, String kopisId,
+                                              String title, String venueName, String organizerName, String description,
+                                              String posterUrl, LocalDate startDate, LocalDate endDate, Short bookingLimitPerMember) {
+        return build(createdBy, genre, PerformanceSource.KOPIS, kopisId, title, venueName,
+                organizerName, description, posterUrl, startDate, endDate, bookingLimitPerMember);
+    }
+
+    private static Performance build(Member createdBy, Genre genre, PerformanceSource source,
+                                     String kopisId, String title, String venueName, String organizerName,
+                                     String description, String posterUrl, LocalDate startDate, LocalDate endDate,
+                                     Short bookingLimitPerMember) {
         Performance p = new Performance();
         p.createdBy = createdBy;
         p.genre = genre;
-        p.source = PerformanceSource.MANUAL;
-        p.kopisId = null;
+        p.source = source;
+        p.kopisId = kopisId;
         p.title = title;
         p.venueName = venueName;
         p.organizerName = organizerName;
         p.description = description;
-        p.posterurl = posterurl;
+        p.posterUrl = posterUrl;
         p.startDate = startDate;
         p.endDate = endDate;
         p.publicationStatus = PublicationStatus.DRAFT;
         p.visibility = Visibility.PRIVATE;
         p.salesStatus = SalesStatus.STOPPED;
-        p.bookingLimitPerMember = (bookingLimitPerMember == null) ? DEFAULT_BOOKING_LIMIT : bookingLimitPerMember;
-        return  p;
-
+        p.bookingLimitPerMember =
+                (bookingLimitPerMember == null) ? DEFAULT_BOOKING_LIMIT : bookingLimitPerMember;
+        return p;
     }
 
 }
